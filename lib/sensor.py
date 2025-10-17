@@ -20,6 +20,8 @@ class Sensor:
         self.with_water_sensor = config.water_sensor_enabled
         self.temperature_sensor_scl_pin = config.temperature_sensor_scl_pin
         self.temperature_sensor_sda_pin = config.temperature_sensor_sda_pin
+        self.water_sensor_in_pin = config.water_sensor_in_pin
+        self.water_sensor_out_pin = config.water_sensor_out_pin
 
         if self.with_water_sensor:
             self.setup_water_sensor()
@@ -55,14 +57,29 @@ class Sensor:
             return None
 
     def setup_water_sensor(self):
-        self.water_sensor = Pin(0, Pin.IN, Pin.PULL_DOWN)
-        Pin(1, Pin.OUT, value=1)
+        self.water_sensor = Pin(
+            self.water_sensor_in_pin,
+            Pin.IN,
+            Pin.PULL_DOWN,
+        )
+
+        Pin(
+            self.water_sensor_out_pin,
+            Pin.OUT,
+            value=1,
+        )
 
     def update_data(self):
         self.output('Updating sensor...')
 
         try:
-            data = {}
+            data = {
+                "address": self.wifi.mac_address,
+                "temperature": None,
+                "humidity": None,
+                "is_wet": None,
+            }
+
             if self.with_temperature_sensor:
                 data['temperature'] = self.temperature
                 data['humidity'] = self.humidity
@@ -76,11 +93,7 @@ class Sensor:
                     'Authorization': f'Bearer {self.api_token}',
                     'Content-Type': 'application/json',
                 },
-                json={
-                    'address': self.wifi.mac_address,
-
-                    **data,
-                },
+                json=data,
                 timeout=5,
             )
 
