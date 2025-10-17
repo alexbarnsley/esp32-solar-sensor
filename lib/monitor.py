@@ -10,7 +10,7 @@ from lib.wifi import WifiHandler
 class MonitorDevice:
     bluetooth_devices: list[str] = []
     bluetooth_state: BluetoothState
-    last_updated: int = 0
+    last_updated: dict[str, int] = 0
     debug: bool = False
     reset_seconds: int = 3600
 
@@ -20,13 +20,14 @@ class MonitorDevice:
         self.with_temperature_sensor = config.temperature_sensor_enabled
         self.with_water_sensor = config.water_sensor_enabled
         self.with_bluetooth = config.bluetooth_enabled
+        self.last_updated = {}
 
         self.wifi = WifiHandler(config)
 
         if self.with_bluetooth:
-            self.set_bluetooth_devices(config.bluetooth_devices)
-
             self.bluetooth_state = BluetoothState(self.wifi, config)
+
+            self.set_bluetooth_devices(config.bluetooth_devices)
 
         if self.with_temperature_sensor or self.with_water_sensor:
             self.sensor = Sensor(self.wifi, config)
@@ -51,10 +52,15 @@ class MonitorDevice:
                 except Exception as e:
                     self.output(f'Error updating Bluetooth devices: {e}')
 
-                if self.reset_seconds > 0 and utime.time() - self.last_updated > self.reset_seconds:
-                    self.output('No Bluetooth updates in the last hour, restarting.')
+                for device_address in self.bluetooth_devices:
+                    last_updated = self.last_updated.get(device_address)
+                    if last_updated is None:
+                        continue
 
-                    machine.reset()
+                    if self.reset_seconds > 0 and utime.time() - last_updated > self.reset_seconds:
+                        self.output(f'No bluetooth updates for {device_address} in the last hour, restarting.')
+
+                        machine.reset()
 
             gc.collect()
 
@@ -104,7 +110,7 @@ class MonitorDevice:
 
                 self.bluetooth_state.save_data(bluetooth_device)
 
-                self.last_updated = utime.time()
+                self.last_updated[device_address] = utime.time()
 
             gc.collect()
 
