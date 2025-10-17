@@ -27,5 +27,12 @@
         "enabled": true,
         "in": 0,
         "out": 1
+    },
+    "auto_update": {
+        "enabled": true,
+        "github_repo": "alexbarnsley/esp32-solar-sensor",
+        "github_src_dir": "",
+        "main_dir": "main",
+        "new_version_dir": "next"
     }
 }

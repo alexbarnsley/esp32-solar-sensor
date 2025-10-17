@@ -1,4 +1,5 @@
 import gc
+import sys
 import utime
 import machine
 from lib.config import Config
@@ -45,12 +46,16 @@ class MonitorDevice:
                     self.sensor.update_data()
                 except Exception as e:
                     self.output(f'Error updating sensor data: {e}')
+                    if self.debug:
+                        sys.print_exception(e)
 
             if self.with_bluetooth and self.bluetooth_devices:
                 try:
                     self.update_bluetooth()
                 except Exception as e:
                     self.output(f'Error updating Bluetooth devices: {e}')
+                    if self.debug:
+                        sys.print_exception(e)
 
                 for device_address in self.bluetooth_devices:
                     last_updated = self.last_updated.get(device_address)

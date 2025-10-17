@@ -17,7 +17,11 @@ class WifiHandler:
 
         self.do_connect()
 
+        self.output('synchronizing time with NTP server...')
+
         ntptime.settime()
+
+        self.output('current time:', utime.localtime())
 
     @property
     def mac_address(self) -> str:
@@ -30,6 +34,7 @@ class WifiHandler:
         return self.wlan.isconnected()
 
     def check_connection(self):
+        self.output('checking wifi connection...')
         if not self.wlan.isconnected():
             self.do_connect()
 

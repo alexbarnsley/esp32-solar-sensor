@@ -52,9 +52,19 @@ class BluetoothState:
         self.current_device = None
         self.state = STATE_DISCONNECTED
 
+        self.output('Initializing Bluetooth...')
+
         self.bt = bluetooth.BLE()
+
+        utime.sleep_ms(100)
+
         self.bt.irq(self.bt_irq)
+
+        utime.sleep_ms(100)
+
         self.bt.active(True)
+
+        self.output('Bluetooth initialized.')
 
     def start(self):
         if self.is_started:
