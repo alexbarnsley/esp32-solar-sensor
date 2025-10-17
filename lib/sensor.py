@@ -1,4 +1,5 @@
 import requests
+from lib.config import Config
 from machine import Pin, I2C
 import ahtx0
 from wifi import WifiHandler
@@ -8,15 +9,20 @@ class Sensor:
     water_sensor: Pin | None = None
     debug: bool = False
 
-    def __init__(self, wifi: WifiHandler, *, api_url: str, api_token: str, debug: bool = False):
-        self.debug = debug
-        self.api_url = api_url
-        self.api_token = api_token
+    def __init__(self, wifi: WifiHandler, config: Config):
+        self.debug = config.debug
+        self.api_url = config.api_url
+        self.api_token = config.api_token
         self.water_sensor = None
         self.temperature_sensor = None
         self.wifi = wifi
+        self.with_temperature_sensor = config.temperature_sensor_enabled
+        self.with_water_sensor = config.water_sensor_enabled
+        self.temperature_sensor_scl_pin = config.temperature_sensor_scl_pin
+        self.temperature_sensor_sda_pin = config.temperature_sensor_sda_pin
 
-        self.setup_water_sensor()
+        if self.with_water_sensor:
+            self.setup_water_sensor()
 
     @property
     def is_wet(self) -> bool:
@@ -37,8 +43,10 @@ class Sensor:
     def get_temperature_sensor(self):
         try:
             if self.temperature_sensor is None:
-                # I2C for the Wemos D1 Mini with ESP8266
-                i2c = I2C(scl=Pin(9), sda=Pin(8))
+                i2c = I2C(
+                    scl=Pin(self.temperature_sensor_scl_pin),
+                    sda=Pin(self.temperature_sensor_sda_pin),
+                )
                 self.temperature_sensor = ahtx0.AHT10(i2c)
 
             return self.temperature_sensor
@@ -54,6 +62,14 @@ class Sensor:
         self.output('Updating sensor...')
 
         try:
+            data = {}
+            if self.with_temperature_sensor:
+                data['temperature'] = self.temperature
+                data['humidity'] = self.humidity
+
+            if self.with_water_sensor:
+                data['is_wet'] = self.is_wet
+
             response = requests.post(
                 f'{self.api_url}/solar/sensor/details',
                 headers={
@@ -62,9 +78,8 @@ class Sensor:
                 },
                 json={
                     'address': self.wifi.mac_address,
-                    'temperature': self.temperature,
-                    'humidity': self.humidity,
-                    'is_wet': self.is_wet,
+
+                    **data,
                 },
                 timeout=5,
             )

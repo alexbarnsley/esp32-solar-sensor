@@ -1,17 +1,17 @@
 import network
 import utime
 import ntptime
-
-WIFI_OPTIONS = {
-    'VM4721320': 'h5fGqctyddjc',
-    'Tenda_5DEF3C': 'soul3334',
-}
+from lib.config import Config
 
 class WifiHandler:
     debug: bool = False
+    networks: dict[str, str] = {}
 
-    def __init__(self, *, debug: bool = False):
-        self.debug = debug
+    def __init__(self, config: Config):
+        self.debug = config.debug
+
+        self.networks = config.wifi_networks
+
         self.wlan = network.WLAN()
         self.wlan.active(True)
 
@@ -38,18 +38,18 @@ class WifiHandler:
 
         while not self.wlan.isconnected():
             access_points = self.wlan.scan()
-            access_points.sort(key=lambda x: x[3], reverse=True)  # Sort by signal strength
-            access_points = [access_point[0] for access_point in access_points if access_point[0].decode('utf-8') in WIFI_OPTIONS]
+            access_points.sort(key=lambda x: x[3], reverse=True)
+            access_points = [access_point[0] for access_point in access_points if access_point[0].decode('utf-8') in self.networks]
 
             for ssid in access_points:
                 ssid = ssid.decode('utf-8')
-                if WIFI_OPTIONS.get(ssid) is None:
+                if self.networks.get(ssid) is None:
                     self.output(f'No password for {ssid}, skipping.')
 
                     continue
 
                 try:
-                    self.wlan.connect(ssid, WIFI_OPTIONS[ssid])
+                    self.wlan.connect(ssid, self.networks[ssid])
                     is_connected = self.wlan.isconnected()
                     attempts = 0
 

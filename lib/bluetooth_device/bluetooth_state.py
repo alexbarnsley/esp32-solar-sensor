@@ -1,3 +1,4 @@
+from lib.config import Config
 import utime
 import requests
 import bluetooth
@@ -32,19 +33,19 @@ class BluetoothState:
     is_started: bool = False
     debug: bool = False
 
-    def __init__(self, wifi: WifiHandler, *, api_url: str, api_token: str, only_devices: list[str] | None = None, debug: bool = False):
+    def __init__(self, wifi: WifiHandler, config: Config):
         self.state_mapping = {
             STATE_CONNECTED: self.on_connected,
         }
 
         self.is_started = False
-        self.debug = debug
+        self.debug = config.debug
 
-        self.only_devices = only_devices
+        self.only_devices = config.bluetooth_devices
         self.wifi = wifi
-        self.api_url = api_url
-        self.api_token = api_token
-        self.data_parser = DataParser(debug=debug)
+        self.api_url = config.api_url
+        self.api_token = config.api_token
+        self.data_parser = DataParser(debug=self.debug)
         self.services_range = None
         self.devices = {}
         self.conn_handle = None

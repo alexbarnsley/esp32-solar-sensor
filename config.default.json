@@ -1,0 +1,31 @@
+{
+    "debug": false,
+    "bluetooth": {
+        "enabled": true,
+        "devices": [
+            "AA:BB:CC:DD:EE:01",
+            "AA:BB:CC:DD:EE:02"
+        ]
+    },
+    "wifi": {
+        "SSID_1": "password1",
+        "SSID_2": "password2"
+    },
+    "api": {
+        "url": "https://custom-api-endpoint.com",
+        "token": "api-token",
+        "solar_endpoint": "solar/solar/details",
+        "sensor_endpoint": "solar/sensor/details"
+    },
+    "reset_seconds": 3600,
+    "temperature_sensor": {
+        "enabled": true,
+        "scl": 9,
+        "sda": 8
+    },
+    "water_sensor": {
+        "enabled": true,
+        "in": 0,
+        "out": 1
+    }
+}

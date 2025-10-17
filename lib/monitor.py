@@ -1,6 +1,7 @@
 import gc
 import utime
 import machine
+from lib.config import Config
 from lib.bluetooth_device.bluetooth_state import STATE_COMMUNICATING, STATE_CONNECTED, STATE_CONNECTING, STATE_DISCOVERING, STATE_SCANNING, BluetoothState, STATE_READY
 from lib.sensor import Sensor
 from lib.utils import wait
@@ -13,27 +14,22 @@ class MonitorDevice:
     debug: bool = False
     reset_seconds: int = 3600
 
-    def __init__(self, *, with_bluetooth: bool = True, with_sensor: bool = True, reset_seconds: int = 3600, debug: bool = False):
-        self.debug = debug
-        self.reset_seconds = reset_seconds
+    def __init__(self, config: Config):
+        self.debug = config.debug
+        self.reset_seconds = config.reset_seconds
+        self.with_temperature_sensor = config.temperature_sensor_enabled
+        self.with_water_sensor = config.water_sensor_enabled
+        self.with_bluetooth = config.bluetooth_enabled
 
-        self.wifi = WifiHandler(debug=debug)
+        self.wifi = WifiHandler(config)
 
-        if with_bluetooth:
-            self.bluetooth_state = BluetoothState(
-                self.wifi,
-                api_url='https://hub.barnsley.io/api',
-                api_token='1|ZSbMAwzyNLm8w7JEkFTemyemSwoxxF2A728WiCog83cac36d',
-                debug=debug,
-            )
+        if self.with_bluetooth:
+            self.set_bluetooth_devices(config.bluetooth_devices)
 
-        if with_sensor:
-            self.sensor = Sensor(
-                self.wifi,
-                api_url='https://hub.barnsley.io/api',
-                api_token='1|ZSbMAwzyNLm8w7JEkFTemyemSwoxxF2A728WiCog83cac36d',
-                debug=debug,
-            )
+            self.bluetooth_state = BluetoothState(self.wifi, config)
+
+        if self.with_temperature_sensor or self.with_water_sensor:
+            self.sensor = Sensor(self.wifi, config)
 
     def set_bluetooth_devices(self, devices: list[str]):
         self.bluetooth_devices = devices
@@ -43,22 +39,24 @@ class MonitorDevice:
         while True:
             self.wifi.check_connection()
 
-            try:
-                self.update_bluetooth()
-            except Exception as e:
-                self.output(f'Error updating Bluetooth devices: {e}')
+            if self.with_temperature_sensor or self.with_water_sensor:
+                try:
+                    self.sensor.update_data()
+                except Exception as e:
+                    self.output(f'Error updating sensor data: {e}')
 
-            try:
-                self.sensor.update_data()
-            except Exception as e:
-                self.output(f'Error updating sensor data: {e}')
+            if self.with_bluetooth and self.bluetooth_devices:
+                try:
+                    self.update_bluetooth()
+                except Exception as e:
+                    self.output(f'Error updating Bluetooth devices: {e}')
+
+                if self.reset_seconds > 0 and utime.time() - self.last_updated > self.reset_seconds:
+                    self.output('No Bluetooth updates in the last hour, restarting.')
+
+                    machine.reset()
 
             gc.collect()
-
-            if utime.time() - self.last_updated > self.reset_seconds:
-                self.output('No Bluetooth updates in the last hour, restarting.')
-
-                machine.reset()
 
             self.sleep()
 
