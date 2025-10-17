@@ -14,6 +14,7 @@ class MonitorDevice:
     last_updated: dict[str, int] = 0
     debug: bool = False
     reset_seconds: int = 3600
+    updater: OTAUpdater
 
     def __init__(self, config: Config):
         self.debug = config.debug
@@ -26,12 +27,32 @@ class MonitorDevice:
         self.wifi = WifiHandler(config)
 
         if self.with_bluetooth:
+            self.output('Initializing Bluetooth state...')
+
             self.bluetooth_state = BluetoothState(self.wifi, config)
 
             self.set_bluetooth_devices(config.bluetooth_devices)
 
         if self.with_temperature_sensor or self.with_water_sensor:
+            self.output('Initializing Sensor...')
+
             self.sensor = Sensor(self.wifi, config)
+
+        self.updater = None
+        if config.auto_update_enabled and config.update_github_repo:
+            from lib.updater import OTAUpdater
+
+            self.output('Initializing OTA Updater...')
+
+            self.updater = OTAUpdater(
+                config.update_github_repo,
+                config.update_github_src_dir,
+                main_dir=config.update_main_dir,
+                new_version_dir=config.update_new_version_dir,
+                config_file='config.json',
+            )
+
+        self.output('MonitorDevice initialized.')
 
     def set_bluetooth_devices(self, devices: list[str]):
         self.bluetooth_devices = devices
@@ -66,6 +87,14 @@ class MonitorDevice:
                         self.output(f'No bluetooth updates for {device_address} in the last hour, restarting.')
 
                         machine.reset()
+
+            if self.updater is not None:
+                try:
+                    self.updater.install_update_if_available()
+                except Exception as e:
+                    self.output(f'Error checking for updates: {e}')
+                    if self.debug:
+                        sys.print_exception(e)
 
             gc.collect()
 

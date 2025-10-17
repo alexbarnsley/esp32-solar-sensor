@@ -20,6 +20,12 @@ class Config:
     temperature_sensor_scl_pin: int
     temperature_sensor_sda_pin: int
 
+    auto_update_enabled: bool
+    update_github_repo: str
+    update_github_src_dir: str
+    update_main_dir: str
+    update_new_version_dir: str
+
     def __init__(self, config: dict):
         self.debug = config.get('debug', False)
 
@@ -42,6 +48,12 @@ class Config:
         self.temperature_sensor_enabled = config.get('temperature_sensor', {}).get('enabled', True)
         self.temperature_sensor_scl_pin = config.get('temperature_sensor', {}).get('scl', 0)
         self.temperature_sensor_sda_pin = config.get('temperature_sensor', {}).get('sda', 1)
+
+        self.auto_update_enabled = config.get('auto_update', {}).get('enabled', True)
+        self.update_github_repo = config.get('auto_update', {}).get('github_repo', 'alexbarnsley/esp32-solar-sensor')
+        self.update_github_src_dir = config.get('auto_update', {}).get('github_src_dir', '')
+        self.update_main_dir = config.get('auto_update', {}).get('main_dir', 'main')
+        self.update_new_version_dir = config.get('auto_update', {}).get('new_version_dir', 'next')
 
     @staticmethod
     def from_json_file(file_path: str) -> 'Config':
