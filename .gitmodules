@@ -1,0 +1,3 @@
+[submodule "lib/ahtx0"]
+	path = thirdparty/ahtx0
+	url = https://github.com/targetblank/micropython_ahtx0

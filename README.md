@@ -2,6 +2,21 @@
 
 This package is used (by myself) with the ESP32-C3 module.
 
+## Setup
+
+1. Pull a copy of the library to your machine:
+
+`git clone --recurse-submodules https://github.com/alexbarnsley/esp32-solar-sensor.git`
+
+2. Create a copy of the default config file:
+
+```
+cd esp32-solar-sensor
+cp config.default.json config.json
+```
+
+3. Edit the new `config.json` values to suit your needs
+
 ## Config
 
 There is a [default config file](./config.default.json) - this can be used as a basis to create a `config.json` file which is used for the device.

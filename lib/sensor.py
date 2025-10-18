@@ -1,8 +1,9 @@
 import requests
+from machine import Pin, I2C
+
 from lib.config import Config
 from lib.logger import Logger
-from machine import Pin, I2C
-import ahtx0
+from thirdparty.ahtx0.ahtx0 import AHT10
 from wifi import WifiHandler
 
 class Sensor:
@@ -52,7 +53,7 @@ class Sensor:
                     scl=Pin(self.temperature_sensor_scl_pin),
                     sda=Pin(self.temperature_sensor_sda_pin),
                 )
-                self.temperature_sensor = ahtx0.AHT10(i2c)
+                self.temperature_sensor = AHT10(i2c)
 
             return self.temperature_sensor
         except Exception as e:
