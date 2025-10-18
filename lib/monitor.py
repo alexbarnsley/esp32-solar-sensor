@@ -56,6 +56,8 @@ class MonitorDevice:
         while True:
             self.wifi.check_connection()
 
+            gc.collect()
+
             if self.with_temperature_sensor or self.with_water_sensor:
                 try:
                     self.sensor.update_data()
@@ -63,6 +65,8 @@ class MonitorDevice:
                     self.logger.output(f'Error updating sensor data: {e}')
                     if self.debug:
                         sys.print_exception(e)
+
+            gc.collect()
 
             if self.with_bluetooth and self.bluetooth_devices:
                 try:
@@ -81,6 +85,8 @@ class MonitorDevice:
                         self.logger.output(f'No bluetooth updates for {device_address} in the last hour, restarting.')
 
                         machine.reset()
+
+            gc.collect()
 
             if self.config.auto_update_enabled and self.config.update_github_repo:
                 try:
