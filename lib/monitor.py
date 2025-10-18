@@ -124,9 +124,9 @@ class MonitorDevice:
 
                 continue
 
-            bluetooth_device = self.bluetooth_state.devices[device_address]
+            self.output(f'Updating device {device_address}...')
 
-            self.bluetooth_state.connect(bluetooth_device)
+            self.bluetooth_state.connect(device_address)
 
             connection_state = wait(lambda: self.bluetooth_state.state in [STATE_CONNECTED, STATE_CONNECTING, STATE_DISCOVERING], timeout=15, on_timeout=lambda: self.output('Timeout waiting for connection...'))
 
@@ -142,7 +142,7 @@ class MonitorDevice:
 
                 self.bluetooth_state.disconnect()
 
-                self.bluetooth_state.save_data(bluetooth_device)
+                self.bluetooth_state.save_data(device_address)
 
                 self.last_updated[device_address] = utime.time()
 

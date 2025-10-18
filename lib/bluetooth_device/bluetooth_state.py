@@ -47,7 +47,7 @@ class BluetoothState:
         self.api_token = config.api_token
         self.data_parser = DataParser(debug=self.debug)
         self.services_range = None
-        self.devices = {}
+        self.devices: list[str] = []
         self.conn_handle = None
         self.current_device = None
         self.state = STATE_DISCONNECTED
@@ -88,13 +88,13 @@ class BluetoothState:
         self.set_state(STATE_SCANNING)
         self.bt.gap_scan(duration_seconds * 1000, trigger_microsecond, trigger_microsecond)
 
-    def connect(self, device: BluetoothDevice):
+    def connect(self, address: str):
         if self.current_device:
             self.disconnect()
 
-        self.current_device = device
+        self.current_device = BluetoothDevice(address)
         self.set_state(STATE_CONNECTING)
-        self.bt.gap_connect(0, bytes(int(b, 16) for b in device.address.split(':')))
+        self.bt.gap_connect(0, bytes(int(b, 16) for b in address.split(':')))
 
     def on_connected(self, data: tuple | None = None):
         self.output('Connected!', data, self.__dict__)
@@ -152,8 +152,7 @@ class BluetoothState:
             return
 
         if addr_str not in self.devices:
-            device = BluetoothDevice(address=addr_str)
-            self.devices[addr_str] = device
+            self.devices.append(addr_str)
 
             self.output('Found device:', addr_str, 'RSSI:', rssi, 'Adv Type:', adv_type, 'Addr Type:', addr_type)
 
@@ -286,11 +285,11 @@ class BluetoothState:
             #     if self.current_device.address in self.data_parser.cell_voltages:
             #         del self.data_parser.cell_voltages[self.current_device.address]
 
-    def save_data(self, device: BluetoothDevice) -> bool:
+    def save_data(self, address: str) -> bool:
         if not self.wifi.is_connected:
             return False
 
-        device_data = self.data_parser.device_data.get(device.address)
+        device_data = self.data_parser.device_data.get(address)
         if not device_data:
             return False
 
@@ -308,13 +307,13 @@ class BluetoothState:
             'cells': device_data.get('cells', -1),
             # 'temperature_sensors': device_data.get('temperature_sensors', -1),
             'temperature': device_data.get('temperature', -1),
-            'address': device.address,
+            'address': address,
         }
 
-        if device.address in self.data_parser.cell_voltages:
-            post_data['cell_voltages'] = self.data_parser.cell_voltages[device.address]
+        if address in self.data_parser.cell_voltages:
+            post_data['cell_voltages'] = self.data_parser.cell_voltages[address]
 
-            del self.data_parser.cell_voltages[device.address]
+            del self.data_parser.cell_voltages[address]
 
         api_response = requests.post(
             f'{self.api_url}/solar/battery/details',
