@@ -144,6 +144,8 @@ class MonitorDevice:
             )
 
             if connection_state is False:
+                self.bluetooth_state.disconnect()
+
                 continue
 
             if self.bluetooth_state.state in [STATE_CONNECTED, STATE_READY]:
