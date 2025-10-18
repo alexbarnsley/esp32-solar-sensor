@@ -4,7 +4,7 @@ from lib.logger import Logger
 import utime
 import machine
 from lib.config import Config
-from lib.bluetooth_device.bluetooth_state import BluetoothState, STATE_CONNECTED, STATE_IDLE, STATE_SCANNING, STATE_READY
+from lib.bluetooth_device.bluetooth_state import BluetoothState, STATE_CONNECTED, STATE_DISCONNECTED, STATE_IDLE, STATE_SCANNING, STATE_READY
 from lib.sensor import Sensor
 from lib.utils import wait_for
 from lib.wifi import WifiHandler
@@ -138,7 +138,7 @@ class MonitorDevice:
             self.bluetooth_state.connect(device_address)
 
             connection_state = wait_for(
-                lambda: self.bluetooth_state.state == STATE_CONNECTED,
+                lambda: self.bluetooth_state.state in [STATE_CONNECTED, STATE_DISCONNECTED, STATE_READY],
                 timeout=15,
                 on_timeout=lambda: self.logger.output(f'Timeout waiting for connection... | Device state: {self.bluetooth_state.state}')
             )
