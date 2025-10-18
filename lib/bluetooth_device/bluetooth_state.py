@@ -95,6 +95,8 @@ class BluetoothState:
         if self.current_device:
             self.disconnect()
 
+            utime.sleep_ms(1000)
+
         self.current_device = BluetoothDevice(address)
         self.set_state(STATE_CONNECTING)
         self.bt.gap_connect(0, bytes(int(b, 16) for b in address.split(':')))
