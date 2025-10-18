@@ -1,5 +1,6 @@
 import requests
 from lib.config import Config
+from lib.logger import Logger
 from machine import Pin, I2C
 import ahtx0
 from wifi import WifiHandler
@@ -8,9 +9,11 @@ class Sensor:
     temperature_sensor: ahtx0.AHT10 | None = None
     water_sensor: Pin | None = None
     debug: bool = False
+    logger: Logger
 
-    def __init__(self, wifi: WifiHandler, config: Config):
+    def __init__(self, wifi: WifiHandler, config: Config, logger: Logger):
         self.debug = config.debug
+        self.logger = logger
         self.api_url = config.api_url
         self.api_token = config.api_token
         self.water_sensor = None
@@ -53,7 +56,7 @@ class Sensor:
 
             return self.temperature_sensor
         except Exception as e:
-            self.output(f'Error initializing sensor: {e}')
+            self.logger.output(f'Error initializing sensor: {e}')
             return None
 
     def setup_water_sensor(self):
@@ -70,7 +73,7 @@ class Sensor:
         )
 
     def update_data(self):
-        self.output('Updating sensor...')
+        self.logger.output('Updating sensor...')
 
         try:
             data = {
@@ -97,12 +100,6 @@ class Sensor:
                 timeout=5,
             )
 
-            self.output('Data sent successfully:', response.status_code, response.content)
+            self.logger.output('Data sent successfully:', response.status_code, response.content)
         except Exception as e:
-            self.output(f'Error sending data: {e}')
-
-    def output(self, *args):
-        if not self.debug:
-            return
-
-        print('DEBUG:', *args)
+            self.logger.output(f'Error sending data: {e}')

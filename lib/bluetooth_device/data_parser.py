@@ -1,11 +1,13 @@
+from lib.logger import Logger
+
 class DataParser:
     _partial_payload: bytes | None = None
     cell_voltages = {}
     device_data = {}
-    debug: bool = False
+    logger: bool = False
 
-    def __init__(self, *, debug: bool = False):
-        self.debug = debug
+    def __init__(self, *, logger: Logger):
+        self.logger = logger
         self._partial_payload = None
         self.cell_voltages = {}
 
@@ -17,7 +19,7 @@ class DataParser:
         return (day * 86400) + (month * 2678400) + (year * 31536000)
 
     def parse_response(self, data: bytes) -> dict:
-        self.output('DATA', len(data), data)
+        self.logger.output('DATA', len(data), data)
 
         if data[0:2] == b'\xdd\x04':
             cell_count = int(int.from_bytes(data[3:4],'big') / 2)
@@ -80,9 +82,3 @@ class DataParser:
             return None, None
 
         return None, None
-
-    def output(self, *args):
-        if not self.debug:
-            return
-
-        print('DEBUG:', *args)

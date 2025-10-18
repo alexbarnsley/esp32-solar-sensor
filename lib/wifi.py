@@ -1,3 +1,4 @@
+from lib.logger import Logger
 import network
 import utime
 import ntptime
@@ -6,9 +7,11 @@ from lib.config import Config
 class WifiHandler:
     debug: bool = False
     networks: dict[str, str] = {}
+    logger: Logger
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, logger: Logger):
         self.debug = config.debug
+        self.logger = logger
 
         self.networks = config.wifi_networks
 
@@ -17,11 +20,11 @@ class WifiHandler:
 
         self.do_connect()
 
-        self.output('synchronizing time with NTP server...')
+        self.logger.output('synchronizing time with NTP server...')
 
         ntptime.settime()
 
-        self.output('current time:', utime.localtime())
+        self.logger.output('current time:', utime.localtime())
 
     @property
     def mac_address(self) -> str:
@@ -34,22 +37,25 @@ class WifiHandler:
         return self.wlan.isconnected()
 
     def check_connection(self):
-        self.output('checking wifi connection...')
+        self.logger.output('checking wifi connection...')
         if not self.wlan.isconnected():
             self.do_connect()
 
     def do_connect(self):
-        self.output('connecting to network...')
+        self.logger.output('connecting to network...')
 
         while not self.wlan.isconnected():
             access_points = self.wlan.scan()
             access_points.sort(key=lambda x: x[3], reverse=True)
-            access_points = [access_point[0] for access_point in access_points if access_point[0].decode('utf-8') in self.networks]
+            access_points = {
+                access_point[0]: access_point[3]
+                for access_point in access_points if access_point[0].decode('utf-8') in self.networks
+            }
 
-            for ssid in access_points:
+            for ssid, rssi in access_points.items():
                 ssid = ssid.decode('utf-8')
                 if self.networks.get(ssid) is None:
-                    self.output(f'No password for {ssid}, skipping.')
+                    self.logger.output(f'No password for {ssid}, skipping.')
 
                     continue
 
@@ -58,7 +64,7 @@ class WifiHandler:
                     is_connected = self.wlan.isconnected()
                     attempts = 0
 
-                    self.output(f'Connecting to {ssid}...')
+                    self.logger.output(f'Connecting to {ssid} [RSSI: {rssi}]...')
                     while not is_connected and attempts < 10:
                         utime.sleep(1)
                         is_connected = self.wlan.isconnected()
@@ -67,12 +73,6 @@ class WifiHandler:
                     if is_connected:
                         break
                 except Exception as e:
-                    self.output(f'Error connecting to {ssid}: {e}')
+                    self.logger.output(f'Error connecting to {ssid}: {e}')
 
-        self.output('network config:', self.wlan.ipconfig('addr4'))
-
-    def output(self, *args):
-        if not self.debug:
-            return
-
-        print('DEBUG:', *args)
+        self.logger.output('network config:', self.wlan.ipconfig('addr4'))

@@ -1,5 +1,6 @@
 import gc
 import sys
+from lib.logger import Logger
 import utime
 import machine
 from lib.config import Config
@@ -24,27 +25,28 @@ class MonitorDevice:
     def __init__(self, config: Config):
         self.config = config
         self.debug = config.debug
+        self.logger = Logger(self.debug)
         self.reset_seconds = config.reset_seconds
         self.with_temperature_sensor = config.temperature_sensor_enabled
         self.with_water_sensor = config.water_sensor_enabled
         self.with_bluetooth = config.bluetooth_enabled
         self.last_updated = {}
 
-        self.wifi = WifiHandler(config)
+        self.wifi = WifiHandler(config, logger=self.logger)
 
         if self.with_bluetooth:
-            self.output('Initializing Bluetooth state...')
+            self.logger.output('Initializing Bluetooth state...')
 
-            self.bluetooth_state = BluetoothState(self.wifi, config)
+            self.bluetooth_state = BluetoothState(self.wifi, config, logger=self.logger)
 
             self.set_bluetooth_devices(config.bluetooth_devices)
 
         if self.with_temperature_sensor or self.with_water_sensor:
-            self.output('Initializing Sensor...')
+            self.logger.output('Initializing Sensor...')
 
-            self.sensor = Sensor(self.wifi, config)
+            self.sensor = Sensor(self.wifi, config, logger=self.logger)
 
-        self.output('MonitorDevice initialized.')
+        self.logger.output('MonitorDevice initialized.')
 
     def set_bluetooth_devices(self, devices: list[str]):
         self.bluetooth_devices = devices
@@ -58,7 +60,7 @@ class MonitorDevice:
                 try:
                     self.sensor.update_data()
                 except Exception as e:
-                    self.output(f'Error updating sensor data: {e}')
+                    self.logger.output(f'Error updating sensor data: {e}')
                     if self.debug:
                         sys.print_exception(e)
 
@@ -66,7 +68,7 @@ class MonitorDevice:
                 try:
                     self.update_bluetooth()
                 except Exception as e:
-                    self.output(f'Error updating Bluetooth devices: {e}')
+                    self.logger.output(f'Error updating Bluetooth devices: {e}')
                     if self.debug:
                         sys.print_exception(e)
 
@@ -76,7 +78,7 @@ class MonitorDevice:
                         continue
 
                     if self.reset_seconds > 0 and utime.time() - last_updated > self.reset_seconds:
-                        self.output(f'No bluetooth updates for {device_address} in the last hour, restarting.')
+                        self.logger.output(f'No bluetooth updates for {device_address} in the last hour, restarting.')
 
                         machine.reset()
 
@@ -93,7 +95,7 @@ class MonitorDevice:
                         api_token=self.config.update_api_token,
                     )
                 except Exception as e:
-                    self.output(f'Error checking for updates: {e}')
+                    self.logger.output(f'Error checking for updates: {e}')
                     if self.debug:
                         sys.print_exception(e)
 
@@ -111,7 +113,7 @@ class MonitorDevice:
         utime.sleep(pause_delay)
 
     def update_bluetooth(self):
-        self.output('Updating Bluetooth devices...')
+        self.logger.output('Updating Bluetooth devices...')
 
         self.bluetooth_state.start()
 
@@ -121,25 +123,25 @@ class MonitorDevice:
 
         for device_address in self.bluetooth_devices:
             if device_address not in self.bluetooth_state.devices:
-                self.output(f'Device {device_address} not found, skipping.')
+                self.logger.output(f'Device {device_address} not found, skipping.')
 
                 continue
 
-            self.output(f'Updating device {device_address}...')
+            self.logger.output(f'Updating device {device_address}...')
 
             self.bluetooth_state.connect(device_address)
 
-            connection_state = wait(lambda: self.bluetooth_state.state in [STATE_CONNECTED, STATE_CONNECTING, STATE_DISCOVERING], timeout=15, on_timeout=lambda: self.output('Timeout waiting for connection...'))
+            connection_state = wait(lambda: self.bluetooth_state.state in [STATE_CONNECTED, STATE_CONNECTING, STATE_DISCOVERING], timeout=15, on_timeout=lambda: self.logger.output('Timeout waiting for connection...'))
 
             if connection_state is False:
                 continue
 
             if self.bluetooth_state.state in [STATE_CONNECTED, STATE_READY]:
-                self.output('Connected and ready!')
+                self.logger.output('Connected and ready!')
 
                 self.bluetooth_state.fetch_data()
 
-                wait(lambda: self.bluetooth_state.state in [STATE_COMMUNICATING], timeout=15, on_timeout=lambda: self.output('Timeout waiting for communication...'))
+                wait(lambda: self.bluetooth_state.state in [STATE_COMMUNICATING], timeout=15, on_timeout=lambda: self.logger.output('Timeout waiting for communication...'))
 
                 self.bluetooth_state.disconnect()
 
@@ -150,9 +152,3 @@ class MonitorDevice:
             gc.collect()
 
         # self.bluetooth_state.stop()
-
-    def output(self, *args):
-        if not self.debug:
-            return
-
-        print('DEBUG:', *args)

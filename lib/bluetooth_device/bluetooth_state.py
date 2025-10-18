@@ -1,8 +1,9 @@
-from lib.config import Config
 import utime
 import requests
 import bluetooth
 
+from lib.config import Config
+from lib.logger import Logger
 from lib.bluetooth_device.bluetooth_device import BluetoothDevice
 import lib.bluetooth_device.const as const
 from lib.bluetooth_device.data_parser import DataParser
@@ -32,27 +33,29 @@ class BluetoothState:
     state_mapping: dict[str, callable] = {}
     is_started: bool = False
     debug: bool = False
+    logger: Logger
 
-    def __init__(self, wifi: WifiHandler, config: Config):
+    def __init__(self, wifi: WifiHandler, config: Config, logger: Logger):
         self.state_mapping = {
             STATE_CONNECTED: self.on_connected,
         }
 
         self.is_started = False
         self.debug = config.debug
+        self.logger = logger
 
         self.only_devices = config.bluetooth_devices
         self.wifi = wifi
         self.api_url = config.api_url
         self.api_token = config.api_token
-        self.data_parser = DataParser(debug=self.debug)
+        self.data_parser = DataParser(logger=self.logger)
         self.services_range = None
         self.devices: list[str] = []
         self.conn_handle = None
         self.current_device = None
         self.state = STATE_DISCONNECTED
 
-        self.output('Initializing Bluetooth...')
+        self.logger.output('Initializing Bluetooth...')
 
         self.bt = bluetooth.BLE()
 
@@ -64,7 +67,7 @@ class BluetoothState:
 
         self.bt.active(True)
 
-        self.output('Bluetooth initialized.')
+        self.logger.output('Bluetooth initialized.')
 
     def start(self):
         if self.is_started:
@@ -75,7 +78,7 @@ class BluetoothState:
         self.set_state(STATE_DISCONNECTED)
 
     def stop(self):
-        self.output('Stopping Bluetooth...')
+        self.logger.output('Stopping Bluetooth...')
 
         if not self.is_started:
             return
@@ -97,7 +100,7 @@ class BluetoothState:
         self.bt.gap_connect(0, bytes(int(b, 16) for b in address.split(':')))
 
     def on_connected(self, data: tuple | None = None):
-        self.output('Connected!', data, self.__dict__)
+        self.logger.output('Connected!', data, self.__dict__)
         self.conn_handle = data[0]
 
         self.get_services()
@@ -113,7 +116,8 @@ class BluetoothState:
                 self.enable_notifications(False)
                 self.bt.gap_disconnect(self.conn_handle)
             except Exception as e:
-                self.output('Error during disconnect:', e, str(e))
+                if str(e) != '-128': # Ignore "already disconnected" error
+                    self.logger.output('Error during disconnect:', str(e))
 
         self.current_device.disconnect()
 
@@ -133,11 +137,14 @@ class BluetoothState:
         if self.current_device:
             self.set_state(STATE_DISCOVERING)
 
-            self.bt.gattc_discover_descriptors(self.conn_handle, self.services_range[0], self.services_range[1])
+            if self.services_range is not None:
+                self.bt.gattc_discover_descriptors(self.conn_handle, self.services_range[0], self.services_range[1])
+            else:
+                self.logger.output('No services found to get descriptors from')
 
     def set_state(self, state: str, data: tuple | None = None):
         if self.state != state:
-            self.output(f'State changed to: {state}')
+            self.logger.output(f'State changed to: {state}')
 
         self.state = state
 
@@ -154,14 +161,14 @@ class BluetoothState:
         if addr_str not in self.devices:
             self.devices.append(addr_str)
 
-            self.output('Found device:', addr_str, 'RSSI:', rssi, 'Adv Type:', adv_type, 'Addr Type:', addr_type)
+            self.logger.output('Found device:', addr_str, 'RSSI:', rssi, 'Adv Type:', adv_type, 'Addr Type:', addr_type)
 
     def handle_service_result(self, data: tuple):
         conn_handle, start_handle, end_handle, uuid = data
 
-        self.output('Service:', uuid, type(uuid), f'{uuid}')
-        self.output('  start_handle:', start_handle)
-        self.output('  end_handle:', end_handle)
+        self.logger.output('Service:', uuid, type(uuid), f'{uuid}')
+        self.logger.output('  start_handle:', start_handle)
+        self.logger.output('  end_handle:', end_handle)
 
         if uuid == bluetooth.UUID(0xff00):
             self.services_range = (start_handle, end_handle)
@@ -174,10 +181,10 @@ class BluetoothState:
     def handle_characteristic_result(self, data: tuple):
         _, end_handle, value_handle, properties, uuid = data
 
-        self.output('characteristic:', uuid, type(uuid), f'{uuid}')
-        self.output('  end_handle:', end_handle)
-        self.output('  value_handle:', value_handle)
-        self.output('  properties:', properties)
+        self.logger.output('characteristic:', uuid, type(uuid), f'{uuid}')
+        self.logger.output('  end_handle:', end_handle)
+        self.logger.output('  value_handle:', value_handle)
+        self.logger.output('  properties:', properties)
 
         if uuid == bluetooth.UUID(0xff01):
             self.current_device.set_notify_handle(value_handle)
@@ -189,8 +196,8 @@ class BluetoothState:
     def handle_descriptor_result(self, data: tuple):
         _, handle, uuid = data
 
-        self.output('descriptor:', uuid, type(uuid), f'{uuid}')
-        self.output('  handle:', handle)
+        self.logger.output('descriptor:', uuid, type(uuid), f'{uuid}')
+        self.logger.output('  handle:', handle)
 
         if uuid == bluetooth.UUID(0x2902):
             self.current_device.set_cccd_handle(handle)
@@ -227,20 +234,20 @@ class BluetoothState:
         _, value_handle, notify_data = data
 
         if value_handle != self.current_device.notify_handle:
-            self.output('Notification from unknown handle:', value_handle)
+            self.logger.output('Notification from unknown handle:', value_handle)
 
             return
 
-        self.output('Notification from handle:', value_handle, 'data:', "".join(["%02X" % i for i in notify_data]))
+        self.logger.output('Notification from handle:', value_handle, 'data:', "".join(["%02X" % i for i in notify_data]))
 
         (response, is_voltages) = self.data_parser.parse_response(bytes(notify_data))
 
         if is_voltages:
-            self.output('cell_voltages', response)
+            self.logger.output('cell_voltages', response)
 
             self.data_parser.cell_voltages[self.current_device.address] = response['voltages']
         elif response is not None:
-            self.output('response', response)
+            self.logger.output('response', response)
 
             self.data_parser.device_data[self.current_device.address] = response
 
@@ -278,7 +285,7 @@ class BluetoothState:
             #         timeout=5,
             #     )
 
-            #     self.output('Data sent successfully:', api_response.status_code, api_response.content)
+            #     self.logger.output('Data sent successfully:', api_response.status_code, api_response.content)
 
             #     self.set_state(STATE_IDLE)
 
@@ -325,7 +332,7 @@ class BluetoothState:
             timeout=5,
         )
 
-        self.output('Data sent successfully:', api_response.status_code, api_response.content)
+        self.logger.output('Data sent successfully:', api_response.status_code, api_response.content)
 
         return True
 
@@ -334,7 +341,7 @@ class BluetoothState:
             return
 
         if self.current_device.cccd_handle:
-            self.output('Triggering notifications:', 'enable' if enable else 'disable')
+            self.logger.output('Triggering notifications:', 'enable' if enable else 'disable')
 
             self.write_data(b'\x01\x00' if enable else b'\x00\x00', handle=self.current_device.cccd_handle)
 
@@ -349,7 +356,7 @@ class BluetoothState:
         self.enable_notifications(True)
 
         if self.current_device.write_handle:
-            self.output('Fetching data...')
+            self.logger.output('Fetching data...')
             self.write_data(b'\xdd\xa5\x04\x00\xff\xfc\x77')
 
             utime.sleep_ms(1000)
@@ -364,7 +371,7 @@ class BluetoothState:
             handle = self.current_device.write_handle
 
         if handle:
-            self.output(f'Writing "{"".join(["%02X" % i for i in data])}" to handle {handle}...')
+            self.logger.output(f'Writing "{"".join(["%02X" % i for i in data])}" to handle {handle}...')
             self.bt.gattc_write(
                 self.conn_handle,
                 handle,
@@ -402,13 +409,9 @@ class BluetoothState:
             self.handle_notify(data)
 
         elif event == const.IRQ_PERIPHERAL_DISCONNECT:
+            self.logger.output('received disconnect event')
+
             self.disconnect()
 
         # else:
-        #     self.output('Unhandled event:', event, data)
-
-    def output(self, *args):
-        if not self.debug:
-            return
-
-        print('DEBUG:', *args)
+        #     self.logger.output('Unhandled event:', event, data)
