@@ -14,9 +14,15 @@ class MonitorDevice:
     last_updated: dict[str, int] = 0
     debug: bool = False
     reset_seconds: int = 3600
-    updater: OTAUpdater
+    config: Config
+    sensor: Sensor
+    wifi: WifiHandler
+    with_bluetooth: bool = False
+    with_temperature_sensor: bool = False
+    with_water_sensor: bool = False
 
     def __init__(self, config: Config):
+        self.config = config
         self.debug = config.debug
         self.reset_seconds = config.reset_seconds
         self.with_temperature_sensor = config.temperature_sensor_enabled
@@ -37,20 +43,6 @@ class MonitorDevice:
             self.output('Initializing Sensor...')
 
             self.sensor = Sensor(self.wifi, config)
-
-        self.updater = None
-        if config.auto_update_enabled and config.update_github_repo:
-            from lib.updater import OTAUpdater
-
-            self.output('Initializing OTA Updater...')
-
-            self.updater = OTAUpdater(
-                config.update_github_repo,
-                config.update_github_src_dir,
-                main_dir=config.update_main_dir,
-                new_version_dir=config.update_new_version_dir,
-                config_file='config.json',
-            )
 
         self.output('MonitorDevice initialized.')
 
@@ -88,9 +80,17 @@ class MonitorDevice:
 
                         machine.reset()
 
-            if self.updater is not None:
+            if self.config.auto_update_enabled and self.config.update_github_repo:
                 try:
-                    self.updater.install_update_if_available()
+                    import lib.updater
+
+                    lib.updater.install_update_if_available(
+                        self.config.update_github_repo,
+                        self.config.update_github_src_dir,
+                        main_dir=self.config.update_main_dir,
+                        new_version_dir=self.config.update_new_version_dir,
+                        config_file='config.json',
+                    )
                 except Exception as e:
                     self.output(f'Error checking for updates: {e}')
                     if self.debug:
