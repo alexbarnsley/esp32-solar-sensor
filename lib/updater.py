@@ -16,6 +16,7 @@ def install_update_if_available(
     new_version_dir='next',
     config_file=None,
     check_frequency_seconds=3600,
+    api_token: str | None = None,
 ) -> bool:
     """This method will immediately install the latest version if out-of-date.
 
@@ -34,14 +35,14 @@ def install_update_if_available(
         return False
 
     github_repo = github_repo.rstrip('/').replace('https://github.com/', '')
-    github_src_dir = '' if len(github_src_dir) < 1 else github_src_dir.rstrip('/') + '/'
+    github_src_dir = '/' if len(github_src_dir) < 1 else github_src_dir.rstrip('/') + '/'
     module = module.rstrip('/')
 
     (current_version, latest_version) = _check_for_new_version(main_dir, github_repo, module)
     if latest_version > current_version:
         print(f'Updating to version {latest_version}...')
         _create_new_version_file(latest_version, new_version_dir, module)
-        _download_new_version(latest_version, new_version_dir, main_dir, github_repo, github_src_dir, module)
+        _download_new_version(latest_version, new_version_dir, main_dir, github_repo, github_src_dir, module, api_token)
         _copy_config_file(main_dir, new_version_dir, config_file, module)
         _delete_old_version(main_dir, module)
         _install_new_version(main_dir, module)
@@ -54,9 +55,19 @@ def install_update_if_available(
 
     return False
 
-def _check_for_new_version(main_dir: str, github_repo='alexbarnsley/esp32-solar-sensor', module=''):
+def _headers(api_token: str | None = None) -> dict[str, str]:
+    headers = {
+        'User-Agent': 'esp32-solar-sensor-updater',
+    }
+
+    if api_token is not None:
+        headers['Authorization'] = f'Bearer {api_token}'
+
+    return headers
+
+def _check_for_new_version(main_dir: str, github_repo='alexbarnsley/esp32-solar-sensor', module='', api_token: str | None = None):
     current_version = get_version(modulepath(main_dir, module))
-    latest_version = get_latest_version(github_repo)
+    latest_version = get_latest_version(github_repo, api_token)
 
     print('Checking version... ')
     print('\tCurrent version: ', current_version)
@@ -82,12 +93,12 @@ def get_version(directory, version_file_name='.version'):
 
     return '0.0'
 
-def get_latest_version(github_repo='alexbarnsley/esp32-solar-sensor'):
+def get_latest_version(github_repo='alexbarnsley/esp32-solar-sensor', api_token: str | None = None):
     print('Getting latest version from GitHub...', f'https://api.github.com/repos/{github_repo}/releases/latest')
 
     latest_release = requests.get(
         f'https://api.github.com/repos/{github_repo}/releases/latest',
-        headers={'User-Agent': github_repo},
+        headers=_headers(api_token),
         timeout=10,
     )
 
@@ -108,37 +119,47 @@ def get_latest_version(github_repo='alexbarnsley/esp32-solar-sensor'):
 
     return version
 
-def _download_new_version(version, new_version_dir='next', main_dir='main', github_repo='alexbarnsley/esp32-solar-sensor', github_src_dir='', module=''):
+def _download_new_version(version, new_version_dir='next', main_dir='main', github_repo='alexbarnsley/esp32-solar-sensor', github_src_dir='', module='', api_token: str | None = None):
     print(f'Downloading version {version}')
 
-    _download_all_files(version, '', github_repo, new_version_dir, main_dir, github_src_dir, module)
+    _download_all_files(version, '', github_repo, new_version_dir, main_dir, github_src_dir, module, api_token)
 
     print(f'Version {version} downloaded to {modulepath(new_version_dir, module)}')
 
-def _download_all_files(version, sub_dir='', github_repo='alexbarnsley/esp32-solar-sensor', new_version_dir='next', main_dir='main', github_src_dir='', module=''):
-    url = f'https://api.github.com/repos/{github_repo}/contents{github_src_dir}{main_dir}{sub_dir}?ref=refs/tags/{version}'
-
+def _download_all_files(version, sub_dir='', github_repo='alexbarnsley/esp32-solar-sensor', new_version_dir='next', main_dir='main', github_src_dir='', module='', api_token: str | None = None):
     gc.collect()
-    file_list = requests.get(url, headers={'User-Agent': github_repo}, timeout=10)
+    file_list = requests.get(
+        f'https://api.github.com/repos/{github_repo}/contents{github_src_dir}{sub_dir}?ref=refs/tags/{version}',
+        headers=_headers(api_token),
+        timeout=10,
+    )
+
     file_list_json = file_list.json()
+
+    print('Getting file list from GitHub...', f'https://api.github.com/repos/{github_repo}/contents{github_src_dir}{sub_dir}?ref=refs/tags/{version}',)
+    print('File list JSON:', file_list_json)
+
     for file in file_list_json:
+        print('Processing', file)
+        print(file['path'])
+
         path = modulepath(new_version_dir + '/' + file['path'].replace(main_dir + '/', '').replace(github_src_dir, ''), module)
         if file['type'] == 'file':
             git_path = file['path']
             print(f'\tDownloading: {git_path} to {path}')
-            _download_file(version, git_path, path, github_repo)
+            _download_file(version, git_path, path, github_repo, api_token)
         elif file['type'] == 'dir':
             print('Creating dir', path)
             mkdir(path)
-            _download_all_files(version, sub_dir + '/' + file['name'], github_repo, new_version_dir, main_dir, github_src_dir, module)
+            _download_all_files(version, sub_dir + '/' + file['name'], github_repo, new_version_dir, main_dir, github_src_dir, module, api_token)
         gc.collect()
 
     file_list.close()
 
-def _download_file(version, git_path, path, github_repo='alexbarnsley/esp32-solar-sensor'):
+def _download_file(version, git_path, path, github_repo='alexbarnsley/esp32-solar-sensor', api_token: str | None = None):
     requests.get(
         f'https://raw.githubusercontent.com/{github_repo}/{version}/{git_path}',
-        headers={'User-Agent': github_repo},
+        headers=_headers(api_token),
         saveToFile=path,
         timeout=10,
     )

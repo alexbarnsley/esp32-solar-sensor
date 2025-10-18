@@ -25,6 +25,7 @@ class Config:
     update_github_src_dir: str
     update_main_dir: str
     update_new_version_dir: str
+    update_api_token: str | None
 
     def __init__(self, config: dict):
         self.debug = config.get('debug', False)
@@ -54,6 +55,7 @@ class Config:
         self.update_github_src_dir = config.get('auto_update', {}).get('github_src_dir', '')
         self.update_main_dir = config.get('auto_update', {}).get('main_dir', 'main')
         self.update_new_version_dir = config.get('auto_update', {}).get('new_version_dir', 'next')
+        self.update_api_token = config.get('auto_update', {}).get('api_token', None)
 
     @staticmethod
     def from_json_file(file_path: str) -> 'Config':

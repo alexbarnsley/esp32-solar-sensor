@@ -33,6 +33,7 @@
         "github_repo": "alexbarnsley/esp32-solar-sensor",
         "github_src_dir": "",
         "main_dir": "main",
-        "new_version_dir": "next"
+        "new_version_dir": "next",
+        "api_token": null
     }
 }

@@ -90,6 +90,7 @@ class MonitorDevice:
                         main_dir=self.config.update_main_dir,
                         new_version_dir=self.config.update_new_version_dir,
                         config_file='config.json',
+                        api_token=self.config.update_api_token,
                     )
                 except Exception as e:
                     self.output(f'Error checking for updates: {e}')
