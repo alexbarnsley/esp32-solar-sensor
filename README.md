@@ -105,6 +105,38 @@ The device Pin number which is connected to the positive water sensor pin.
 
 The device Pin number which is connected to the negative water sensor pin.
 
+### auto_update
+
+#### auto_update.enabled
+
+Whether to perform auto-updates.
+
+Default: `true`
+
+#### auto_update.github_repo
+
+The GitHub repository used to check for updates.
+
+Default: `'alexbarnsley/esp32-solar-sensor'`
+
+#### auto_update.github_src_dir
+
+Path within GitHub repository if not the base path.
+
+Default: `''`
+
+#### auto_update.main_dir
+
+Directory used for the current version.
+
+Default: `'main'`
+
+#### auto_update.new_version_dir
+
+Directory used to download updates to.
+
+Default: `'next'`
+
 ## Hardware
 
 Below is the hardware used with this device:
