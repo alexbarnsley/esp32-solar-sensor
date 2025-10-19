@@ -174,3 +174,5 @@ class MonitorDevice:
                 machine.reset()
 
             gc.collect()
+
+            utime.sleep(1)

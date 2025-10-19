@@ -2,7 +2,7 @@
 
 import os
 import gc
-import requests
+import urequests as requests
 
 from lib.logger import Logger
 
@@ -42,7 +42,11 @@ def install_update_if_available(
         _download_new_version(latest_version, github_src_dir, new_version_dir, github_repo, api_token)
         _install_new_version(new_version_dir)
 
+        gc.collect()
+
         return True
+
+    gc.collect()
 
     return False
 
@@ -139,6 +143,13 @@ def _download_all_files(version, github_src_dir, sub_dir='', github_repo='alexba
     logger.output('File list JSON:', file_list_json)
 
     for file in file_list_json:
+        if file['path'].startswith('.') or (file['path'].startswith('thirdparty') and file['type'] == 'dir'):
+            logger.output('Skipping', file['path'])
+
+            gc.collect()
+
+            continue
+
         logger.output('Processing', file)
         logger.output(file['path'])
 
