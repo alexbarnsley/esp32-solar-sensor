@@ -146,7 +146,10 @@ class BluetoothState:
 
     def set_state(self, state: str, data: tuple | None = None):
         if self.state != state:
-            self.logger.output(f'[{self.current_device.address}] State changed to: {state}')
+            if self.current_device:
+                self.logger.output(f'[{self.current_device.address}] State changed to: {state}')
+            else:
+                self.logger.output(f'State changed to: {state}')
 
         self.state = state
 
