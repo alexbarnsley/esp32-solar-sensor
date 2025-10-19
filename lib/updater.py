@@ -46,7 +46,8 @@ def install_update_if_available(config: Config, mac_address: str) -> bool:
 
         _rmtree(modulepath(new_version_dir))
 
-        _create_new_version_file(latest_version, new_version_dir)
+        mkdir(modulepath(new_version_dir))
+
         _download_new_version(latest_version, github_src_dir, new_version_dir, github_repo, api_token)
         _install_new_version(config, new_version_dir, latest_version)
 
