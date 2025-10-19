@@ -4,7 +4,9 @@ import gc
 from lib.utils import copy_file, json_dumps_with_indent
 import machine
 import os
+import sys
 import urequests as requests
+import utime
 
 from lib.config import Config
 from lib.logger import Logger
@@ -113,6 +115,8 @@ def _download_config_file(config: Config, mac_address: str) -> bool:
         )
 
         response_json = response.json()
+        logger.output('Config file response:', response_json)
+
         if 'error' in response_json:
             logger.output('Error fetching config file:', response_json['error'])
 
@@ -143,6 +147,7 @@ def _download_config_file(config: Config, mac_address: str) -> bool:
 
         response.close()
 
+        del headers
         del response
         del response_json
 
@@ -307,7 +312,7 @@ def _exists_dir(path) -> bool:
     except:
         return False
 
-def _mk_dirs(path:str):
+def _mk_dirs(path: str):
     paths = path.split('/')
 
     path_to_create = ''
@@ -316,7 +321,7 @@ def _mk_dirs(path:str):
         path_to_create = path_to_create + x + '/'
 
 # different micropython versions act differently when directory already exists
-def mkdir(path:str):
+def mkdir(path: str):
     try:
         os.mkdir(path)
     except OSError as exc:

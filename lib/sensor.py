@@ -9,7 +9,7 @@ from thirdparty.ahtx0.ahtx0 import AHT10
 from wifi import WifiHandler
 
 class Sensor:
-    temperature_sensor: ahtx0.AHT10 | None = None
+    temperature_sensor: AHT10 | None = None
     water_sensor: Pin | None = None
     debug: bool = False
     logger: Logger
