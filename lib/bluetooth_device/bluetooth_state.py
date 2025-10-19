@@ -47,7 +47,7 @@ class BluetoothState:
         self.only_devices = config.bluetooth_devices
         self.wifi = wifi
         self.api_url = config.api_url
-        self.api_endpoint = config.solar_endpoint
+        self.api_endpoint = config.battery_endpoint
         self.api_token = config.api_token
         self.data_parser = DataParser(logger=self.logger)
         self.services_range = None

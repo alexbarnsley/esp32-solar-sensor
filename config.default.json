@@ -14,7 +14,7 @@
     "api": {
         "url": "https://custom-api-endpoint.com",
         "token": "api-token",
-        "solar_endpoint": "solar/solar/details",
+        "battery_endpoint": "solar/battery/details",
         "sensor_endpoint": "solar/sensor/details",
         "sensor_config_endpoint": "solar/sensor/config"
     },

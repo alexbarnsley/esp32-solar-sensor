@@ -8,7 +8,7 @@ class Config:
 
     api_url: str
     api_token: str
-    solar_endpoint: str
+    battery_endpoint: str
     sensor_endpoint: str
     sensor_config_endpoint: str
 
@@ -44,7 +44,7 @@ class Config:
 
         self.api_url = config.get('api', {}).get('url', '').rstrip('/')
         self.api_token = config.get('api', {}).get('token', '')
-        self.solar_endpoint = config.get('api', {}).get('solar_endpoint', 'solar/battery/details')
+        self.battery_endpoint = config.get('api', {}).get('battery_endpoint', 'solar/battery/details')
         self.sensor_endpoint = config.get('api', {}).get('sensor_endpoint', 'solar/sensor/details')
         self.sensor_config_endpoint = config.get('api', {}).get('sensor_config_endpoint', 'solar/sensor/config')
 

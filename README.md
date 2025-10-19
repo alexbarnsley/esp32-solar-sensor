@@ -57,7 +57,7 @@ The Base URL to send the device data to.
 
 The API token to use when sending data.
 
-#### api.solar_endpoint
+#### api.battery_endpoint
 
 The endpoint used for sending solar battery data. In the format of:
 
