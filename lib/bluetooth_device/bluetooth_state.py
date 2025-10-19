@@ -121,13 +121,13 @@ class BluetoothState:
                 self.bt.gap_disconnect(self.conn_handle)
 
             except OSError as e:
-                self.logger.output('OSError during disconnect:', str(e))
+                if str(e) != '128': # Ignore "already disconnected" error
+                    self.logger.output('OSError during disconnect:', str(e))
 
-                machine.reset()
+                    machine.reset()
 
             except Exception as e:
-                if str(e) != '-128': # Ignore "already disconnected" error
-                    self.logger.output('Error during disconnect:', str(e))
+                self.logger.output(f'Error during disconnect: {e}')
 
         self.current_device.disconnect()
 
