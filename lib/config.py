@@ -5,7 +5,8 @@ class Config:
     api_url: str
     api_token: str
     solar_endpoint: str
-    battery_endpoint: str
+    sensor_endpoint: str
+    sensor_config_endpoint: str
 
     wifi_networks: dict[str, str]
 
@@ -37,9 +38,9 @@ class Config:
 
         self.api_url = config.get('api', {}).get('url', '').rstrip('/')
         self.api_token = config.get('api', {}).get('token', '')
-        self.solar_endpoint = config.get('api', {}).get('solar_endpoint', 'solar/sensor/details')
-        self.battery_endpoint = config.get('api', {}).get('sensor_endpoint', 'solar/solar/details')
-        self.config_endpoint = config.get('api', {}).get('config_endpoint', 'solar/sensor/config')
+        self.solar_endpoint = config.get('api', {}).get('solar_endpoint', 'solar/battery/details')
+        self.sensor_endpoint = config.get('api', {}).get('sensor_endpoint', 'solar/sensor/details')
+        self.sensor_config_endpoint = config.get('api', {}).get('sensor_config_endpoint', 'solar/sensor/config')
 
         self.wifi_networks = config.get('wifi', {})
 
@@ -65,7 +66,7 @@ class Config:
         self.auto_update_config_url = config.get('auto_update', {}).get('config', {}).get('url')
 
         if self.auto_update_config_url is None or len(self.auto_update_config_url) == 0:
-            self.auto_update_config_url = self.api_url + '/' + self.config_endpoint
+            self.auto_update_config_url = self.api_url + '/' + self.sensor_config_endpoint
 
             if self.auto_update_config_token is None:
                 self.auto_update_config_token = self.api_token

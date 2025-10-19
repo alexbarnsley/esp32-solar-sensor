@@ -16,7 +16,7 @@
         "token": "api-token",
         "solar_endpoint": "solar/solar/details",
         "sensor_endpoint": "solar/sensor/details",
-        "config_endpoint": "solar/sensor/config"
+        "sensor_config_endpoint": "solar/sensor/config"
     },
     "reset_seconds": 3600,
     "temperature_sensor": {

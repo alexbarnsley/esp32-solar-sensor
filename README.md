@@ -89,16 +89,13 @@ The endpoint used for sending temperature, humidity, and "is wet" data. In the f
 }
 ```
 
-#### api.config_endpoint
+#### api.sensor_config_endpoint
 
 The endpoint used for fetching the config for the sensor. In the format of:
 
 ```json
 {
-    "address": "AA:BB:CC:DD:EE:FF",
-    "config": {
-        ...
-    }
+    "address": "AA:BB:CC:DD:EE:FF"
 }
 ```
 
@@ -168,7 +165,7 @@ Whether to download config updated from the URL provided.
 
 #### auto_update.config.url
 
-The direct URL to use for downloading a config file. If this is not provided, it will use `api.url` and `api.config_endpoint` to generate a URL, along with the token associated with the API requests.
+The direct URL to use for downloading a config file. If this is not provided, it will use `api.url` and `api.sensor_config_endpoint` to generate a URL, along with the token associated with the API requests.
 
 #### auto_update.config.api_token
 

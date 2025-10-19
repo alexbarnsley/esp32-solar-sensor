@@ -16,6 +16,8 @@ class Sensor:
         self.debug = config.debug
         self.logger = logger
         self.api_url = config.api_url
+        self.api_endpoint = config.sensor_endpoint
+        self.config_api_endpoint = config.sensor_config_endpoint
         self.api_token = config.api_token
         self.water_sensor = None
         self.temperature_sensor = None
@@ -92,7 +94,7 @@ class Sensor:
                 data['is_wet'] = self.is_wet
 
             response = requests.post(
-                f'{self.api_url}/solar/sensor/details',
+                f'{self.api_url}/{self.api_endpoint}',
                 headers={
                     'Authorization': f'Bearer {self.api_token}',
                     'Content-Type': 'application/json',

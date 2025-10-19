@@ -47,6 +47,7 @@ class BluetoothState:
         self.only_devices = config.bluetooth_devices
         self.wifi = wifi
         self.api_url = config.api_url
+        self.api_endpoint = config.solar_endpoint
         self.api_token = config.api_token
         self.data_parser = DataParser(logger=self.logger)
         self.services_range = None
@@ -328,7 +329,7 @@ class BluetoothState:
             del self.data_parser.cell_voltages[address]
 
         api_response = requests.post(
-            f'{self.api_url}/solar/battery/details',
+            f'{self.api_url}/{self.api_endpoint}',
             headers={
                 'Authorization': f'Bearer {self.api_token}',
                 'Content-Type': 'application/json',
