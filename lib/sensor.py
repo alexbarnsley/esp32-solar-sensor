@@ -1,5 +1,7 @@
-import requests
+import machine
 from machine import Pin, I2C
+import requests
+import sys
 
 from lib.config import Config
 from lib.logger import Logger
@@ -58,6 +60,12 @@ class Sensor:
                 self.temperature_sensor = AHT10(i2c)
 
             return self.temperature_sensor
+
+        except OSError as e:
+            self.logger.output(f'OSError initializing temperature sensor: {e}')
+
+            machine.reset()
+
         except Exception as e:
             self.logger.output(f'Error initializing sensor: {e}')
             return None
@@ -104,6 +112,14 @@ class Sensor:
             )
 
             self.logger.output('Data sent successfully:', response.status_code, response.content)
+
+        except OSError as e:
+            self.logger.output(f'OSError sending data: {e}')
+            if self.debug:
+                sys.print_exception(e)
+
+            machine.reset()
+
         except Exception as e:
             self.logger.output(f'Error sending data: {e}')
 
@@ -134,6 +150,13 @@ class Sensor:
                 self.logger.output('Failed to fetch config last updated timestamp:', response.status_code, response.content)
 
                 return None
+
+        except OSError as e:
+            self.logger.output(f'OSError sending data: {e}')
+            if self.debug:
+                sys.print_exception(e)
+
+            machine.reset()
 
         except Exception as e:
             self.logger.output(f'Error sending data: {e}')

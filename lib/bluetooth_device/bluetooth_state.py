@@ -1,6 +1,7 @@
-import utime
-import requests
 import bluetooth
+import machine
+import requests
+import utime
 
 from lib.config import Config
 from lib.logger import Logger
@@ -118,6 +119,12 @@ class BluetoothState:
             try:
                 self.enable_notifications(False)
                 self.bt.gap_disconnect(self.conn_handle)
+
+            except OSError as e:
+                self.logger.output('OSError during disconnect:', str(e))
+
+                machine.reset()
+
             except Exception as e:
                 if str(e) != '-128': # Ignore "already disconnected" error
                     self.logger.output('Error during disconnect:', str(e))

@@ -69,6 +69,14 @@ class MonitorDevice:
             if self.with_temperature_sensor or self.with_water_sensor:
                 try:
                     self.sensor.update_data()
+
+                except OSError as e:
+                    self.logger.output(f'OSError updating sensor data: {e}')
+                    if self.debug:
+                        sys.print_exception(e)
+
+                    machine.reset()
+
                 except Exception as e:
                     self.logger.output(f'Error updating sensor data: {e}')
                     if self.debug:
@@ -79,6 +87,14 @@ class MonitorDevice:
             if self.with_bluetooth and self.bluetooth_devices:
                 try:
                     self.update_bluetooth()
+
+                except OSError as e:
+                    self.logger.output(f'OSError updating Bluetooth devices: {e}')
+                    if self.debug:
+                        sys.print_exception(e)
+
+                    machine.reset()
+
                 except Exception as e:
                     self.logger.output(f'Error updating Bluetooth devices: {e}')
                     if self.debug:
@@ -163,6 +179,13 @@ class MonitorDevice:
                     self.logger.output('Update installed, restarting device...')
 
                     machine.reset()
+
+            except OSError as e:
+                self.logger.output(f'OSError checking for updates: {e}')
+                if self.debug:
+                    sys.print_exception(e)
+
+                machine.reset()
 
             except Exception as e:
                 self.logger.output(f'Error checking for updates: {e}')

@@ -30,6 +30,12 @@ class WifiHandler:
                 ntptime.settime()
 
                 break
+
+            except OSError as e:
+                self.logger.output(f'OSError setting time: {e}')
+
+                machine.reset()
+
             except Exception as e:
                 self.logger.output(f'Error setting time: {e}, retrying in 5 seconds...')
 
@@ -89,6 +95,12 @@ class WifiHandler:
 
                     if is_connected:
                         break
+
+                except OSError as e:
+                    self.logger.output(f'OSError connecting to {ssid}: {e}')
+
+                    machine.reset()
+
                 except Exception as e:
                     self.logger.output(f'Error connecting to {ssid}: {e}')
 

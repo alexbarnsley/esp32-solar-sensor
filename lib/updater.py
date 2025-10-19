@@ -144,10 +144,17 @@ def _download_config_file(config: Config | None = None):
         del response
         del response_json
 
-        gc.collect()
+    except OSError as e:
+        logger.output('OSError updating config file:', e)
+        if config.debug:
+            sys.print_exception(e)
+
+        machine.reset()
 
     except Exception as e:
         logger.output('Failed to update config file:', e)
+        if config.debug:
+            sys.print_exception(e)
 
     return has_updated
 
@@ -179,6 +186,12 @@ def get_latest_version(github_repo='alexbarnsley/esp32-solar-sensor', api_token:
 
     try:
         version = gh_json[0]['name']
+
+    except OSError as e:
+        logger.output(f'OSError getting latest version: {e}')
+
+        machine.reset()
+
     except KeyError as e:
         raise ValueError(
             "Release not found: \n",
@@ -305,6 +318,13 @@ def _exists_dir(path) -> bool:
         os.listdir(path)
 
         return True
+
+    except OSError as e:
+        if e.args[0] != 2:
+            print(f'OSError checking directory exists: {e}')
+
+            machine.reset()
+
     except:
         return False
 
