@@ -132,7 +132,7 @@ def _download_config_file(config: Config | None = None):
 
         else:
             with open('config.json', 'wb') as configfile:
-                configfile.write(json.dumps(response_json['config']).encode('utf-8'))
+                configfile.write(json.dumps(response_json['config'], indent=4).encode('utf-8'))
                 configfile.close()
 
             logger.output('Config file updated successfully.')
