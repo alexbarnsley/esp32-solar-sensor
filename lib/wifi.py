@@ -75,6 +75,8 @@ class WifiHandler:
                 for access_point in access_points if access_point[0].decode('utf-8') in self.networks
             }
 
+            self.logger.output(f'Found {len(access_points)} access points')
+
             for ssid, rssi in access_points.items():
                 ssid = ssid.decode('utf-8')
                 if self.networks.get(ssid) is None:
@@ -83,11 +85,16 @@ class WifiHandler:
                     continue
 
                 try:
+                    self.logger.output(f'Connecting to {ssid} [RSSI: {rssi}]...')
+
+                    self.wlan.disconnect()
+
+                    utime.sleep(1)
+
                     self.wlan.connect(ssid, self.networks[ssid])
                     is_connected = self.wlan.isconnected()
                     attempts = 0
 
-                    self.logger.output(f'Connecting to {ssid} [RSSI: {rssi}]...')
                     while not is_connected and attempts < 10:
                         utime.sleep(1)
                         is_connected = self.wlan.isconnected()
