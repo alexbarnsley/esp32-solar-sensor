@@ -15,7 +15,8 @@
         "url": "https://custom-api-endpoint.com",
         "token": "api-token",
         "solar_endpoint": "solar/solar/details",
-        "sensor_endpoint": "solar/sensor/details"
+        "sensor_endpoint": "solar/sensor/details",
+        "config_endpoint": "solar/sensor/config"
     },
     "reset_seconds": 3600,
     "temperature_sensor": {
@@ -33,6 +34,12 @@
         "github_repo": "alexbarnsley/esp32-solar-sensor",
         "github_src_dir": "",
         "new_version_dir": "next",
-        "api_token": null
+        "api_token": null,
+
+        "config": {
+            "enabled": false,
+            "url": "https://custom-api-endpoint.com/config.json",
+            "api_token": null
+        }
     }
 }

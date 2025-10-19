@@ -26,15 +26,20 @@ class Config:
     update_new_version_dir: str
     update_api_token: str | None
 
+    auto_update_config_enabled: bool
+    auto_update_config_url: str | None
+    auto_update_config_token: str | None
+
     def __init__(self, config: dict):
         self.debug = config.get('debug', False)
 
         self.reset_seconds = config.get('reset_seconds', 3600)
 
-        self.api_url = config.get('api', {}).get('url', '')
+        self.api_url = config.get('api', {}).get('url', '').rstrip('/')
         self.api_token = config.get('api', {}).get('token', '')
         self.solar_endpoint = config.get('api', {}).get('solar_endpoint', 'solar/sensor/details')
         self.battery_endpoint = config.get('api', {}).get('sensor_endpoint', 'solar/solar/details')
+        self.config_endpoint = config.get('api', {}).get('config_endpoint', 'solar/sensor/config')
 
         self.wifi_networks = config.get('wifi', {})
 
@@ -54,6 +59,16 @@ class Config:
         self.update_github_src_dir = config.get('auto_update', {}).get('github_src_dir', '')
         self.update_new_version_dir = config.get('auto_update', {}).get('new_version_dir', 'next')
         self.update_api_token = config.get('auto_update', {}).get('api_token', None)
+
+        self.auto_update_config_enabled = config.get('auto_update', {}).get('config', {}).get('enabled', self.auto_update_enabled)
+        self.auto_update_config_token = config.get('auto_update', {}).get('config', {}).get('api_token')
+        self.auto_update_config_url = config.get('auto_update', {}).get('config', {}).get('url')
+
+        if self.auto_update_config_url is None or len(self.auto_update_config_url) == 0:
+            self.auto_update_config_url = self.api_url + '/' + self.config_endpoint
+
+            if self.auto_update_config_token is None:
+                self.auto_update_config_token = self.api_token
 
     @staticmethod
     def from_json_file(file_path: str) -> 'Config':

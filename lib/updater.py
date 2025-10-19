@@ -1,20 +1,16 @@
 # Heavily based on https://github.com/rdehuyss/micropython-ota-updater/blob/master/app/ota_updater.py
 
+import json
 import os
 import gc
 import urequests as requests
 
+from lib.config import Config
 from lib.logger import Logger
 
 logger = Logger()
 
-def install_update_if_available(
-    github_repo,
-    github_src_dir='',
-    new_version_dir='next',
-    api_token: str | None = None,
-    debug: bool = False,
-) -> bool:
+def install_update_if_available(config: Config) -> bool:
     """This method will immediately install the latest version if out-of-date.
 
     This method expects an active internet connection and allows you to decide yourself
@@ -26,8 +22,15 @@ def install_update_if_available(
         bool: true if a new version is available, false otherwise
     """
 
-    if debug:
+    github_repo = config.update_github_repo
+    github_src_dir = config.update_github_src_dir
+    new_version_dir = config.update_new_version_dir
+    api_token = config.update_api_token
+
+    if config.debug:
         logger.set_debug(True)
+
+    _download_config_file(config)
 
     github_repo = github_repo.rstrip('/').replace('https://github.com/', '')
     github_src_dir = '/' if len(github_src_dir) < 1 else github_src_dir.rstrip('/') + '/'
@@ -79,11 +82,72 @@ def _create_new_version_file(latest_version, new_version_dir='next'):
 
     logger.output(f'Created VERSION.txt with {latest_version}')
 
+def _download_config_file(config: Config | None = None):
+    if config.auto_update_enabled is False:
+        return
+
+    if config.auto_update_config_enabled is False:
+        return
+
+    config_url = config.auto_update_config_url
+    if config_url is None:
+        logger.output('No config URL provided, skipping config update.')
+
+        return
+
+    logger.output('Downloading latest config file from', config_url)
+
+    try:
+        last_modified_at = os.stat('config.json')[8]
+
+        headers = {}
+        if config.auto_update_config_token is not None:
+            headers['Authorization'] = f'Bearer {config.auto_update_config_token}'
+
+        response = requests.get(
+            config_url,
+            timeout=10,
+            stream=True,
+            headers=headers,
+        )
+
+        response_json = response.json()
+        if 'error' in response_json:
+            logger.output('Error fetching config file:', response_json['error'])
+
+        elif response.status_code != 200:
+            logger.output('Failed to fetch config file, status code:', response.status_code)
+
+        elif 'config' not in response_json:
+            logger.output('No config found in response, skipping config update.')
+
+        elif 'config_updated_at' in response_json and response_json['config_updated_at'] <= last_modified_at:
+            logger.output('Config file is up to date, no update needed.')
+
+        else:
+            with open('config.json', 'wb') as configfile:
+                configfile.write(json.dumps(response_json['config']).encode('utf-8'))
+                configfile.close()
+
+            logger.output('Config file updated successfully.')
+
+        response.close()
+
+        del response
+        del response_json
+
+        gc.collect()
+
+    except Exception as e:
+        logger.output('Failed to update config file:', e)
+
 def get_version(directory):
     try:
         if 'VERSION.txt' in os.listdir(directory):
             with open(directory + '/VERSION.txt') as f:
                 version = f.read()
+
+                f.close()
 
                 return version
     except:
@@ -179,6 +243,7 @@ def _download_file(version, git_path, github_repo='alexbarnsley/esp32-solar-sens
 
     with open(f'{new_version_dir}/{git_path}', "wb") as out:
         out.write(response.content)
+        out.close()
 
 def _install_new_version(new_version_dir):
     logger.output('Installing new version at...')
@@ -213,17 +278,17 @@ def _copy_directory(from_path, to_path):
             _copy_file(from_path + '/' + entry[0], to_path + '/' + entry[0])
 
 def _copy_file(from_path, to_path):
-    with open(from_path) as fromFile:
-        with open(to_path, 'w') as toFile:
+    with open(from_path) as from_file:
+        with open(to_path, 'w') as to_file:
             CHUNK_SIZE = 512 # bytes
-            data = fromFile.read(CHUNK_SIZE)
+            data = from_file.read(CHUNK_SIZE)
             while data:
-                toFile.write(data)
-                data = fromFile.read(CHUNK_SIZE)
+                to_file.write(data)
+                data = from_file.read(CHUNK_SIZE)
 
-        toFile.close()
+            to_file.close()
 
-    fromFile.close()
+        from_file.close()
 
 def _exists_dir(path) -> bool:
     try:

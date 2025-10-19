@@ -71,7 +71,7 @@ The endpoint used for sending solar battery data. In the format of:
     "soc": 80,
     "cells": 4,
     "temperature": 134,
-    "address": "AA:BB:CC:DD:EE:01",
+    "address": "AA:BB:CC:DD:EE:FF",
     "cell_voltages": [321, 321, 321, 321],
 }
 ```
@@ -82,11 +82,27 @@ The endpoint used for sending temperature, humidity, and "is wet" data. In the f
 
 ```json
 {
+    "address": "AA:BB:CC:DD:EE:FF",
     "temperature": 24.5,
     "humidity": 44.5,
     "is_wet": false
 }
 ```
+
+#### api.config_endpoint
+
+The endpoint used for fetching the config for the sensor. In the format of:
+
+```json
+{
+    "address": "AA:BB:CC:DD:EE:FF",
+    "config": {
+        ...
+    }
+}
+```
+
+This is automated and the config will be downloaded and saved in the `config.json` file.
 
 ### reset_seconds
 
@@ -145,6 +161,18 @@ Default: `''`
 Directory used to download updates to.
 
 Default: `'next'`
+
+#### auto_update.config.enabled
+
+Whether to download config updated from the URL provided.
+
+#### auto_update.config.url
+
+The direct URL to use for downloading a config file. If this is not provided, it will use `api.url` and `api.config_endpoint` to generate a URL, along with the token associated with the API requests.
+
+#### auto_update.config.api_token
+
+API Token used for the download request, if necessary.
 
 ## Hardware
 
