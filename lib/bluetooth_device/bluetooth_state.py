@@ -259,45 +259,6 @@ class BluetoothState:
 
             self.set_state(STATE_IDLE)
 
-
-            # if self.wifi.is_connected:
-            #     post_data = {
-            #         'voltage': response.get('voltage', -1),
-            #         'current': response.get('current', -1),
-            #         'ahrem': response.get('ahrem', -1),
-            #         'ahmax': response.get('ahmax', -1),
-            #         # 'cycles': response.get('cycles', -1),
-            #         # 'production_timestamp': response.get('production_timestamp', -1),
-            #         'protection_status': response.get('protection_status', -1),
-            #         # 'version': response.get('version', -1),
-            #         'soc': response.get('soc', -1),
-            #         # 'fet': response.get('fet', -1),
-            #         'cells': response.get('cells', -1),
-            #         # 'temperature_sensors': response.get('temperature_sensors', -1),
-            #         'temperature': response.get('temperature', -1),
-            #         'address': self.current_device.address,
-            #     }
-
-            #     if self.current_device.address in self.data_parser.cell_voltages:
-            #         post_data['cell_voltages'] = self.data_parser.cell_voltages[self.current_device.address]
-
-            #     api_response = requests.post(
-            #         f'{self.api_url}/solar/battery/details',
-            #         headers={
-            #             'Authorization': f'Bearer {self.api_token}',
-            #             'Content-Type': 'application/json',
-            #         },
-            #         json=post_data,
-            #         timeout=5,
-            #     )
-
-            #     self.logger.output('Data sent successfully:', api_response.status_code, api_response.content)
-
-            #     self.set_state(STATE_IDLE)
-
-            #     if self.current_device.address in self.data_parser.cell_voltages:
-            #         del self.data_parser.cell_voltages[self.current_device.address]
-
     def save_data(self, address: str) -> bool:
         if not self.wifi.is_connected:
             return False

@@ -1,8 +1,9 @@
 import gc
 import sys
-from lib.logger import Logger
 import utime
 import machine
+
+from lib.logger import Logger
 from lib.config import Config
 from lib.bluetooth_device.bluetooth_state import BluetoothState, STATE_CONNECTED, STATE_DISCONNECTED, STATE_IDLE, STATE_SCANNING, STATE_READY
 from lib.sensor import Sensor

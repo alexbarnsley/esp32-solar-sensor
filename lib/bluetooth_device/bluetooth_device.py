@@ -1,5 +1,4 @@
 class BluetoothDevice:
-    # conn_handle: int
     address: str
     write_handle: int
     notify_handle: int

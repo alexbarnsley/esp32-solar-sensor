@@ -63,11 +63,6 @@ class DataParser:
 
             response['watts'] = (response['voltage'] * response['current']) / 10000.0
 
-            # if response['ahmax'] == 0:
-            #     response['soc'] = 0.0
-            # else:
-            #     response['soc'] = 100.0 * (response['ahrem'] / response['ahmax'])
-
             self._partial_payload = None
 
             return response, False
