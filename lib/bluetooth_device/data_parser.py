@@ -10,6 +10,7 @@ class DataParser:
         self.logger = logger
         self._partial_payload = None
         self.cell_voltages = {}
+        self.device_data = {}
 
     def decode_prod_date_to_timestamp(self, prod):
         year  = 2000 + (prod >> 9)
