@@ -125,7 +125,7 @@ class MonitorDevice:
             self.bluetooth_state.connect(device_address)
 
             connection_state = wait_for(
-                lambda: self.bluetooth_state.state in [STATE_CONNECTED, STATE_DISCONNECTED, STATE_READY],
+                lambda: self.bluetooth_state.state in [STATE_DISCONNECTED, STATE_READY],
                 timeout=15,
                 on_timeout=lambda: self.logger.output(f'Timeout waiting for connection... | Device state: {self.bluetooth_state.state}')
             )
