@@ -1,22 +1,19 @@
-# Based on https://github.com/rdehuyss/micropython-ota-updater/blob/master/app/ota_updater.py
+# Heavily based on https://github.com/rdehuyss/micropython-ota-updater/blob/master/app/ota_updater.py
 
 import os
 import gc
-import utime
-
 import requests
 
-last_check_timestamp = 0
+from lib.logger import Logger
+
+logger = Logger()
 
 def install_update_if_available(
     github_repo,
     github_src_dir='',
-    module='',
-    main_dir='main',
     new_version_dir='next',
-    config_file=None,
-    check_frequency_seconds=3600,
     api_token: str | None = None,
+    debug: bool = False,
 ) -> bool:
     """This method will immediately install the latest version if out-of-date.
 
@@ -29,29 +26,23 @@ def install_update_if_available(
         bool: true if a new version is available, false otherwise
     """
 
-    global last_check_timestamp
-
-    if utime.time() - last_check_timestamp < check_frequency_seconds:
-        return False
+    if debug:
+        logger.set_debug(True)
 
     github_repo = github_repo.rstrip('/').replace('https://github.com/', '')
     github_src_dir = '/' if len(github_src_dir) < 1 else github_src_dir.rstrip('/') + '/'
-    module = module.rstrip('/')
 
-    (current_version, latest_version) = _check_for_new_version(main_dir, github_repo, module)
+    (current_version, latest_version) = _check_for_new_version(github_repo)
     if latest_version > current_version:
-        print(f'Updating to version {latest_version}...')
-        _create_new_version_file(latest_version, new_version_dir, module)
-        _download_new_version(latest_version, new_version_dir, main_dir, github_repo, github_src_dir, module, api_token)
-        _copy_config_file(main_dir, new_version_dir, config_file, module)
-        _delete_old_version(main_dir, module)
-        _install_new_version(main_dir, module)
+        logger.output(f'New version found - {latest_version}...')
 
-        last_check_timestamp = utime.time()
+        _rmtree(modulepath(new_version_dir))
+
+        _create_new_version_file(latest_version, new_version_dir)
+        _download_new_version(latest_version, github_src_dir, new_version_dir, github_repo, api_token)
+        _install_new_version(new_version_dir)
 
         return True
-
-    last_check_timestamp = utime.time()
 
     return False
 
@@ -65,26 +56,29 @@ def _headers(api_token: str | None = None) -> dict[str, str]:
 
     return headers
 
-def _check_for_new_version(main_dir: str, github_repo='alexbarnsley/esp32-solar-sensor', module='', api_token: str | None = None):
-    current_version = get_version(modulepath(main_dir, module))
+def _check_for_new_version(github_repo='alexbarnsley/esp32-solar-sensor', api_token: str | None = None):
+    current_version = get_version('/')
     latest_version = get_latest_version(github_repo, api_token)
 
-    print('Checking version... ')
-    print('\tCurrent version: ', current_version)
-    print('\tLatest version: ', latest_version)
+    logger.output('Checking version... ')
+    logger.output('\tCurrent version: ', current_version)
+    logger.output('\tLatest version: ', latest_version)
 
     return (current_version, latest_version)
 
-def _create_new_version_file(latest_version, new_version_dir='next', module=''):
-    mkdir(modulepath(new_version_dir, module))
-    with open(modulepath(new_version_dir + '/.version', module), 'w') as versionfile:
+def _create_new_version_file(latest_version, new_version_dir='next'):
+    mkdir(modulepath(new_version_dir))
+
+    with open(modulepath(new_version_dir + '/VERSION.txt'), 'w') as versionfile:
         versionfile.write(latest_version)
         versionfile.close()
 
-def get_version(directory, version_file_name='.version'):
+    logger.output(f'Created VERSION.txt with {latest_version}')
+
+def get_version(directory):
     try:
-        if version_file_name in os.listdir(directory):
-            with open(directory + '/' + version_file_name) as f:
+        if 'VERSION.txt' in os.listdir(directory):
+            with open(directory + '/VERSION.txt') as f:
                 version = f.read()
 
                 return version
@@ -94,20 +88,19 @@ def get_version(directory, version_file_name='.version'):
     return '0.0'
 
 def get_latest_version(github_repo='alexbarnsley/esp32-solar-sensor', api_token: str | None = None):
-    print('Getting latest version from GitHub...', f'https://api.github.com/repos/{github_repo}/releases/latest')
+    logger.output('Getting latest version from GitHub...')
 
     latest_release = requests.get(
-        f'https://api.github.com/repos/{github_repo}/releases/latest',
+        f'https://api.github.com/repos/{github_repo}/tags',
         headers=_headers(api_token),
         timeout=10,
+        stream=True,
     )
-
-    print('ASDASdASDs', latest_release.content.decode('utf-8'))
 
     gh_json = latest_release.json()
 
     try:
-        version = gh_json['tag_name']
+        version = gh_json[0]['name']
     except KeyError as e:
         raise ValueError(
             "Release not found: \n",
@@ -117,83 +110,77 @@ def get_latest_version(github_repo='alexbarnsley/esp32-solar-sensor', api_token:
 
     latest_release.close()
 
+    del latest_release
+    del gh_json
+
+    gc.collect()
+
     return version
 
-def _download_new_version(version, new_version_dir='next', main_dir='main', github_repo='alexbarnsley/esp32-solar-sensor', github_src_dir='', module='', api_token: str | None = None):
-    print(f'Downloading version {version}')
+def _download_new_version(version, github_src_dir, new_version_dir='next', github_repo='alexbarnsley/esp32-solar-sensor', api_token: str | None = None):
+    logger.output(f'Downloading version {version}...')
 
-    _download_all_files(version, '', github_repo, new_version_dir, main_dir, github_src_dir, module, api_token)
+    _download_all_files(version, github_src_dir, '', github_repo, new_version_dir, api_token)
 
-    print(f'Version {version} downloaded to {modulepath(new_version_dir, module)}')
+    logger.output(f'Version {version} downloaded to {modulepath(new_version_dir)}')
 
-def _download_all_files(version, sub_dir='', github_repo='alexbarnsley/esp32-solar-sensor', new_version_dir='next', main_dir='main', github_src_dir='', module='', api_token: str | None = None):
+def _download_all_files(version, github_src_dir, sub_dir='', github_repo='alexbarnsley/esp32-solar-sensor', new_version_dir='next', api_token: str | None = None):
     gc.collect()
     file_list = requests.get(
         f'https://api.github.com/repos/{github_repo}/contents{github_src_dir}{sub_dir}?ref=refs/tags/{version}',
         headers=_headers(api_token),
         timeout=10,
+        stream=True,
     )
 
     file_list_json = file_list.json()
 
-    print('Getting file list from GitHub...', f'https://api.github.com/repos/{github_repo}/contents{github_src_dir}{sub_dir}?ref=refs/tags/{version}',)
-    print('File list JSON:', file_list_json)
+    logger.output('Getting file list from GitHub...', f'https://api.github.com/repos/{github_repo}/contents{github_src_dir}{sub_dir}?ref=refs/tags/{version}',)
+    logger.output('File list JSON:', file_list_json)
 
     for file in file_list_json:
-        print('Processing', file)
-        print(file['path'])
+        logger.output('Processing', file)
+        logger.output(file['path'])
 
-        path = modulepath(new_version_dir + '/' + file['path'].replace(main_dir + '/', '').replace(github_src_dir, ''), module)
+        git_path = file['path']
+
         if file['type'] == 'file':
-            git_path = file['path']
-            print(f'\tDownloading: {git_path} to {path}')
-            _download_file(version, git_path, path, github_repo, api_token)
+            logger.output(f'\tDownloading: {git_path} to {git_path}')
+
+            _download_file(version, git_path, github_repo, api_token, new_version_dir)
         elif file['type'] == 'dir':
-            print('Creating dir', path)
-            mkdir(path)
-            _download_all_files(version, sub_dir + '/' + file['name'], github_repo, new_version_dir, main_dir, github_src_dir, module, api_token)
+            logger.output('Creating dir', git_path)
+
+            mkdir(f'{new_version_dir}/{git_path}')
+            _download_all_files(version, github_src_dir, sub_dir + '/' + file['name'], github_repo, new_version_dir, api_token)
+
         gc.collect()
 
     file_list.close()
 
-def _download_file(version, git_path, path, github_repo='alexbarnsley/esp32-solar-sensor', api_token: str | None = None):
-    requests.get(
+def _download_file(version, git_path, github_repo='alexbarnsley/esp32-solar-sensor', api_token: str | None = None, new_version_dir='next'):
+    response = requests.get(
         f'https://raw.githubusercontent.com/{github_repo}/{version}/{git_path}',
         headers=_headers(api_token),
-        saveToFile=path,
         timeout=10,
+        stream=True,
     )
 
-def _copy_config_file(main_dir='main', new_version_dir='next', config_file=None, module=''):
-    if config_file:
-        from_path = modulepath(main_dir + '/' + config_file, module)
-        to_path = modulepath(new_version_dir + '/' + config_file, module)
+    with open(f'{new_version_dir}/{git_path}', "wb") as out:
+        out.write(response.content)
 
-        print(f'Copying secrets file from {from_path} to {to_path}')
+def _install_new_version(new_version_dir):
+    logger.output('Installing new version at...')
 
-        _copy_file(from_path, to_path)
+    _copy_directory(modulepath(new_version_dir), '/')
+    _rmtree(modulepath(new_version_dir))
 
-        print(f'Copied secrets file from {from_path} to {to_path}')
-
-def _delete_old_version(main_dir='main', module=''):
-    print(f'Deleting old version at {modulepath(main_dir, module)} ...')
-
-    _rmtree(modulepath(main_dir, module))
-
-    print(f'Deleted old version at {modulepath(main_dir, module)} ...')
-
-def _install_new_version(main_dir='main', module=''):
-    print(f'Installing new version at {modulepath(main_dir, module)} ...')
-
-    # if _os_supports_rename():
-    #     os.rename(modulepath(new_version_dir), modulepath(main_dir))
-    # else:
-    #     _copy_directory(modulepath(new_version_dir), modulepath(main_dir))
-    #     _rmtree(modulepath(new_version_dir))
-
-    print('Update installed, please reboot now')
+    logger.output('Update installed, please reboot now')
 
 def _rmtree(directory):
+    if not _exists_dir(directory):
+        return
+
     for entry in os.ilistdir(directory):
         is_dir = entry[1] == 0x4000
         if is_dir:
@@ -202,14 +189,6 @@ def _rmtree(directory):
             os.remove(directory + '/' + entry[0])
 
     os.rmdir(directory)
-
-def _os_supports_rename() -> bool:
-    _mk_dirs('otaUpdater/osRenameTest')
-    os.rename('otaUpdater', 'otaUpdated')
-    result = len(os.listdir('otaUpdated')) > 0
-    _rmtree('otaUpdated')
-
-    return result
 
 def _copy_directory(from_path, to_path):
     if not _exists_dir(to_path):
@@ -259,5 +238,5 @@ def mkdir(path:str):
         if exc.args[0] == 17:
             pass
 
-def modulepath(path, module='') -> str:
-    return module + '/' + path if module else path
+def modulepath(path) -> str:
+    return '/' + path

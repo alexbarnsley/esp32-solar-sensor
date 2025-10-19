@@ -8,6 +8,7 @@ from lib.bluetooth_device.bluetooth_state import BluetoothState, STATE_CONNECTED
 from lib.sensor import Sensor
 from lib.utils import wait_for
 from lib.wifi import WifiHandler
+import lib.updater
 
 class MonitorDevice:
     bluetooth_devices: list[str] = []
@@ -32,7 +33,12 @@ class MonitorDevice:
         self.with_bluetooth = config.bluetooth_enabled
         self.last_updated = {}
 
+        gc.enable()
+
         self.wifi = WifiHandler(config, logger=self.logger)
+
+        # We check for updates here once we've established a wifi connection
+        self.check_for_updates()
 
         if self.with_bluetooth:
             self.logger.output('Initializing Bluetooth state...')
@@ -85,25 +91,6 @@ class MonitorDevice:
                         self.logger.output(f'No bluetooth updates for {device_address} in the last hour, restarting.')
 
                         machine.reset()
-
-            gc.collect()
-
-            if self.config.auto_update_enabled and self.config.update_github_repo:
-                try:
-                    import lib.updater
-
-                    lib.updater.install_update_if_available(
-                        self.config.update_github_repo,
-                        self.config.update_github_src_dir,
-                        main_dir=self.config.update_main_dir,
-                        new_version_dir=self.config.update_new_version_dir,
-                        config_file='config.json',
-                        api_token=self.config.update_api_token,
-                    )
-                except Exception as e:
-                    self.logger.output(f'Error checking for updates: {e}')
-                    if self.debug:
-                        sys.print_exception(e)
 
             gc.collect()
 
@@ -163,4 +150,27 @@ class MonitorDevice:
 
             gc.collect()
 
-        # self.bluetooth_state.stop()
+    def check_for_updates(self):
+        if self.config.auto_update_enabled and self.config.update_github_repo:
+            try:
+                has_updated = lib.updater.install_update_if_available(
+                    self.config.update_github_repo,
+                    self.config.update_github_src_dir,
+                    new_version_dir=self.config.update_new_version_dir,
+                    api_token=self.config.update_api_token,
+                    debug=self.debug,
+                )
+
+                if has_updated:
+                    self.logger.output('Update installed, restarting device...')
+
+                    machine.reset()
+
+            except Exception as e:
+                self.logger.output(f'Error checking for updates: {e}')
+                if self.debug:
+                    sys.print_exception(e)
+
+                machine.reset()
+
+            gc.collect()

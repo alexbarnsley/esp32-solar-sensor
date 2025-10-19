@@ -1,5 +1,3 @@
-# from lib.bluetooth_state import bluetooth_state
-
 class BluetoothDevice:
     # conn_handle: int
     address: str
@@ -26,17 +24,3 @@ class BluetoothDevice:
         self.write_handle = None
         self.notify_handle = None
         self.cccd_handle = None
-
-    # def trigger(self, state: str, **kwargs):
-    #     if hasattr(self, f'on_{state}'):
-    #         getattr(self, f'on_{state}')(**kwargs)
-
-    # def on_connected(self, conn_handle: int):
-    #     self.conn_handle = conn_handle
-
-    #     print(f'Connected to device: {self.address.hex(":")}')
-
-    #     # self.get_services()
-
-    # # def get_services(self):
-    # #     bluetooth_state.

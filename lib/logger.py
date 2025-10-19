@@ -6,6 +6,9 @@ class Logger:
     def __init__(self, debug: bool = False):
         self.debug = debug
 
+    def set_debug(self, debug: bool):
+        self.debug = debug
+
     def output(self, *args):
         if not self.debug:
             return

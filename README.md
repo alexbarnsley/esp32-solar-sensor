@@ -140,12 +140,6 @@ Path within GitHub repository if not the base path.
 
 Default: `''`
 
-#### auto_update.main_dir
-
-Directory used for the current version.
-
-Default: `'main'`
-
 #### auto_update.new_version_dir
 
 Directory used to download updates to.
