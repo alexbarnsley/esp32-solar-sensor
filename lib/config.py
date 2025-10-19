@@ -35,10 +35,10 @@ class Config:
     auto_update_config_url: str | None
     auto_update_config_token: str | None
 
-    def __init__(self, config: dict, last_updated: int = 0):
+    def __init__(self, config: dict):
         self.debug = config.get('debug', False)
 
-        self.last_updated = last_updated
+        self.load_cache(config)
 
         self.reset_seconds = config.get('reset_seconds', 3600)
 
@@ -77,19 +77,63 @@ class Config:
             if self.auto_update_config_token is None:
                 self.auto_update_config_token = self.api_token
 
+        gc.collect()
+
+    def load_cache(self, config: dict):
+        self.last_updated = config.get('cache', {}).get('config_last_updated_at', 0)
+        self.version = config.get('cache', {}).get('version', '0.0.0')
+
     @staticmethod
     def from_json_file(file_path: str) -> 'Config':
-        import json
-
         with open('config.default.json', 'r') as f:
             default_config = json.load(f)
 
         with open(file_path, 'r') as f:
             config_data = json.load(f)
 
-        last_updated = os.stat(file_path)[8]
+        cache_data = Config.get_cache()
 
         merged_config = default_config.copy()
         merged_config.update(config_data)
 
-        return Config(merged_config, last_updated)
+        merged_config['cache'] = cache_data.copy()
+
+        del default_config
+        del config_data
+        del cache_data
+
+        return Config(merged_config)
+
+    @staticmethod
+    def get_cache(key: str | None = None):
+        try:
+            with open('cache.json', 'r') as f:
+                cache_data = json.load(f)
+                f.close()
+
+            if key is not None:
+                return cache_data.get(key)
+
+            return cache_data
+
+        except OSError as e:
+            print(f'OSError reading cache file: {e}')
+
+            machine.reset()
+
+        except Exception:
+            return None if key is not None else {}
+
+    def update_cache(self, key: str, value):
+        cache_data = Config.get_cache()
+
+        cache_data[key] = value
+
+        with open('cache.json.tmp', 'w') as f:
+            f.write(json_dumps_with_indent(cache_data))
+            f.close()
+
+        copy_file('cache.json.tmp', 'cache.json')
+        os.remove('cache.json.tmp')
+
+        self.load_cache(cache_data)

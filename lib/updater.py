@@ -40,7 +40,7 @@ def install_update_if_available(config: Config) -> bool:
     github_repo = github_repo.rstrip('/').replace('https://github.com/', '')
     github_src_dir = '/' if len(github_src_dir) < 1 else github_src_dir.rstrip('/') + '/'
 
-    (current_version, latest_version) = _check_for_new_version(github_repo)
+    (current_version, latest_version) = _check_for_new_version(config, github_repo)
     if latest_version > current_version:
         logger.output(f'New version found - {latest_version}...')
 
@@ -48,7 +48,7 @@ def install_update_if_available(config: Config) -> bool:
 
         _create_new_version_file(latest_version, new_version_dir)
         _download_new_version(latest_version, github_src_dir, new_version_dir, github_repo, api_token)
-        _install_new_version(new_version_dir)
+        _install_new_version(config, new_version_dir, latest_version)
 
         gc.collect()
 
@@ -68,8 +68,8 @@ def _headers(api_token: str | None = None) -> dict[str, str]:
 
     return headers
 
-def _check_for_new_version(github_repo='alexbarnsley/esp32-solar-sensor', api_token: str | None = None):
-    current_version = get_version('/')
+def _check_for_new_version(config, github_repo='alexbarnsley/esp32-solar-sensor', api_token: str | None = None):
+    current_version = config.version
     latest_version = get_latest_version(github_repo, api_token)
 
     logger.output('Checking version... ')
@@ -77,15 +77,6 @@ def _check_for_new_version(github_repo='alexbarnsley/esp32-solar-sensor', api_to
     logger.output('\tLatest version: ', latest_version)
 
     return (current_version, latest_version)
-
-def _create_new_version_file(latest_version, new_version_dir='next'):
-    mkdir(modulepath(new_version_dir))
-
-    with open(modulepath(new_version_dir + '/VERSION.txt'), 'w') as versionfile:
-        versionfile.write(latest_version)
-        versionfile.close()
-
-    logger.output(f'Created VERSION.txt with {latest_version}')
 
 def _download_config_file(config: Config | None = None):
     if config.auto_update_enabled is False:
@@ -104,7 +95,7 @@ def _download_config_file(config: Config | None = None):
 
     has_updated = False
     try:
-        last_modified_at = os.stat('config.json')[8]
+        logger.output('Current config last modified at:', config.last_updated)
 
         headers = {}
         if config.auto_update_config_token is not None:
@@ -127,13 +118,15 @@ def _download_config_file(config: Config | None = None):
         elif 'config' not in response_json:
             logger.output('No config found in response, skipping config update.')
 
-        elif 'config_updated_at' in response_json and response_json['config_updated_at'] <= last_modified_at:
-            logger.output('Config file is up to date, no update needed.')
+        elif 'config_updated_at' in response_json and response_json['config_updated_at'] <= config.last_updated:
+            logger.output(f'Config file is up to date, no update needed | config_updated_at: {response_json["config_updated_at"]} | last_updated: {config.last_updated}')
 
         else:
             with open('config.json', 'wb') as configfile:
                 configfile.write(json.dumps(response_json['config'], indent=4).encode('utf-8'))
                 configfile.close()
+
+            config.update_cache('config_last_updated_at', response_json.get('config_updated_at', utime.time()))
 
             logger.output('Config file updated successfully.')
 
@@ -156,21 +149,9 @@ def _download_config_file(config: Config | None = None):
         if config.debug:
             sys.print_exception(e)
 
+    gc.collect()
+
     return has_updated
-
-def get_version(directory):
-    try:
-        if 'VERSION.txt' in os.listdir(directory):
-            with open(directory + '/VERSION.txt') as f:
-                version = f.read()
-
-                f.close()
-
-                return version
-    except:
-        pass
-
-    return '0.0'
 
 def get_latest_version(github_repo='alexbarnsley/esp32-solar-sensor', api_token: str | None = None):
     logger.output('Getting latest version from GitHub...')
@@ -268,13 +249,15 @@ def _download_file(version, git_path, github_repo='alexbarnsley/esp32-solar-sens
         out.write(response.content)
         out.close()
 
-def _install_new_version(new_version_dir):
+def _install_new_version(config, new_version_dir, latest_version):
     logger.output('Installing new version at...')
 
     _copy_directory(modulepath(new_version_dir), '/')
     _rmtree(modulepath(new_version_dir))
 
-    logger.output('Update installed, please reboot now')
+    logger.output('Update installed')
+
+    config.update_cache('version', latest_version)
 
 def _rmtree(directory):
     if not _exists_dir(directory):
