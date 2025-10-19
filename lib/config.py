@@ -63,7 +63,7 @@ class Config:
 
         self.auto_update_enabled = config.get('auto_update', {}).get('enabled', True)
         self.update_github_repo = config.get('auto_update', {}).get('github_repo', 'alexbarnsley/esp32-solar-sensor')
-        self.update_github_src_dir = config.get('auto_update', {}).get('github_src_dir', '')
+        self.update_github_src_dir = config.get('auto_update', {}).get('github_src_dir', None)
         self.update_new_version_dir = config.get('auto_update', {}).get('new_version_dir', 'next')
         self.update_api_token = config.get('auto_update', {}).get('api_token', None)
 

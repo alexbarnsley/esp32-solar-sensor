@@ -38,7 +38,7 @@ def install_update_if_available(config: Config) -> bool:
         machine.reset()
 
     github_repo = github_repo.rstrip('/').replace('https://github.com/', '')
-    github_src_dir = '/' if len(github_src_dir) < 1 else github_src_dir.rstrip('/') + '/'
+    github_src_dir = '/' if github_src_dir is None or len(github_src_dir) < 1 else github_src_dir.rstrip('/') + '/'
 
     (current_version, latest_version) = _check_for_new_version(config, github_repo)
     if latest_version > current_version:
