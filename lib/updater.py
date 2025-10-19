@@ -1,7 +1,7 @@
 # Heavily based on https://github.com/rdehuyss/micropython-ota-updater/blob/master/app/ota_updater.py
 
 import gc
-import json
+from lib.utils import copy_file
 import machine
 import os
 import urequests as requests
@@ -284,20 +284,7 @@ def _copy_directory(from_path, to_path):
         if is_dir:
             _copy_directory(from_path + '/' + entry[0], to_path + '/' + entry[0])
         else:
-            _copy_file(from_path + '/' + entry[0], to_path + '/' + entry[0])
-
-def _copy_file(from_path, to_path):
-    with open(from_path) as from_file:
-        with open(to_path, 'w') as to_file:
-            CHUNK_SIZE = 512 # bytes
-            data = from_file.read(CHUNK_SIZE)
-            while data:
-                to_file.write(data)
-                data = from_file.read(CHUNK_SIZE)
-
-            to_file.close()
-
-        from_file.close()
+            copy_file(from_path + '/' + entry[0], to_path + '/' + entry[0])
 
 def _exists_dir(path) -> bool:
     try:
