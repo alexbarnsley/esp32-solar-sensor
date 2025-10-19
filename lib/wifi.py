@@ -1,8 +1,10 @@
-from lib.logger import Logger
+import machine
 import network
-import utime
 import ntptime
+import utime
+
 from lib.config import Config
+from lib.logger import Logger
 
 class WifiHandler:
     debug: bool = False
@@ -22,7 +24,22 @@ class WifiHandler:
 
         self.logger.output('synchronizing time with NTP server...')
 
-        ntptime.settime()
+        ntp_counter = 0
+        while True:
+            try:
+                ntptime.settime()
+
+                break
+            except Exception as e:
+                self.logger.output(f'Error setting time: {e}, retrying in 5 seconds...')
+
+                utime.sleep(5)
+
+            ntp_counter += 1
+            if ntp_counter >= 5:
+                self.logger.output('Failed to synchronize time after multiple attempts, proceeding without accurate time.')
+
+                machine.reset()
 
         self.logger.output('current time:', utime.localtime())
 
