@@ -1,7 +1,7 @@
 # Heavily based on https://github.com/rdehuyss/micropython-ota-updater/blob/master/app/ota_updater.py
 
 import gc
-from lib.utils import copy_file
+from lib.utils import copy_file, json_dumps_with_indent
 import machine
 import os
 import urequests as requests
@@ -125,9 +125,14 @@ def _download_config_file(config: Config, mac_address: str) -> bool:
             logger.output(f'Config file is up to date, no update needed | config_updated_at: {response_json["config_updated_at"]} | last_updated: {config.last_updated}')
 
         else:
-            with open('config.json', 'wb') as configfile:
-                configfile.write(json.dumps(response_json['config'], indent=4).encode('utf-8'))
+            with open('config.updated.json', 'wb') as configfile:
+                configfile.write(json_dumps_with_indent(response_json['config']).encode('utf-8'))
                 configfile.close()
+
+            del configfile
+
+            copy_file('config.updated.json', 'config.json')
+            os.remove('config.updated.json')
 
             config.update_cache('config_last_updated_at', response_json.get('config_updated_at', utime.time()))
 
