@@ -173,7 +173,7 @@ class MonitorDevice:
     def check_for_updates(self):
         if self.config.auto_update_enabled and self.config.update_github_repo:
             try:
-                has_updated = lib.updater.install_update_if_available(self.config)
+                has_updated = lib.updater.install_update_if_available(self.config, self.wifi.mac_address)
 
                 if has_updated:
                     self.logger.output('Update installed, restarting device...')

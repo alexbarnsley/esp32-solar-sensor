@@ -11,7 +11,7 @@ from lib.logger import Logger
 
 logger = Logger()
 
-def install_update_if_available(config: Config) -> bool:
+def install_update_if_available(config: Config, mac_address: str) -> bool:
     """This method will immediately install the latest version if out-of-date.
 
     This method expects an active internet connection and allows you to decide yourself
@@ -31,7 +31,7 @@ def install_update_if_available(config: Config) -> bool:
     if config.debug:
         logger.set_debug(True)
 
-    config_has_updated = _download_config_file(config)
+    config_has_updated = _download_config_file(config, mac_address)
     if config_has_updated:
         logger.output('Config file has been updated, rebooting.')
 
@@ -78,7 +78,7 @@ def _check_for_new_version(config, github_repo='alexbarnsley/esp32-solar-sensor'
 
     return (current_version, latest_version)
 
-def _download_config_file(config: Config | None = None):
+def _download_config_file(config: Config, mac_address: str) -> bool:
     if config.auto_update_enabled is False:
         return
 
@@ -106,6 +106,9 @@ def _download_config_file(config: Config | None = None):
             timeout=10,
             stream=True,
             headers=headers,
+            json={
+                "address": mac_address,
+            }
         )
 
         response_json = response.json()
