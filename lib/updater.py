@@ -1,8 +1,9 @@
 # Heavily based on https://github.com/rdehuyss/micropython-ota-updater/blob/master/app/ota_updater.py
 
-import json
-import os
 import gc
+import json
+import machine
+import os
 import urequests as requests
 
 from lib.config import Config
@@ -30,7 +31,11 @@ def install_update_if_available(config: Config) -> bool:
     if config.debug:
         logger.set_debug(True)
 
-    _download_config_file(config)
+    config_has_updated = _download_config_file(config)
+    if config_has_updated:
+        logger.output('Config file has been updated, rebooting.')
+
+        machine.reset()
 
     github_repo = github_repo.rstrip('/').replace('https://github.com/', '')
     github_src_dir = '/' if len(github_src_dir) < 1 else github_src_dir.rstrip('/') + '/'
@@ -97,6 +102,7 @@ def _download_config_file(config: Config | None = None):
 
     logger.output('Downloading latest config file from', config_url)
 
+    has_updated = False
     try:
         last_modified_at = os.stat('config.json')[8]
 
@@ -131,6 +137,8 @@ def _download_config_file(config: Config | None = None):
 
             logger.output('Config file updated successfully.')
 
+            has_updated = True
+
         response.close()
 
         del response
@@ -140,6 +148,8 @@ def _download_config_file(config: Config | None = None):
 
     except Exception as e:
         logger.output('Failed to update config file:', e)
+
+    return has_updated
 
 def get_version(directory):
     try:

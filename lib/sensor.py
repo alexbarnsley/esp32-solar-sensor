@@ -106,3 +106,34 @@ class Sensor:
             self.logger.output('Data sent successfully:', response.status_code, response.content)
         except Exception as e:
             self.logger.output(f'Error sending data: {e}')
+
+    def get_config_last_updated_at(self) -> int | None:
+        self.logger.output('Fetching config last updated timestamp...')
+
+        try:
+            response = requests.get(
+                f'{self.api_url}/{self.config_api_endpoint}',
+                headers={
+                    'Authorization': f'Bearer {self.api_token}',
+                    'Content-Type': 'application/json',
+                },
+                json={
+                    "address": self.wifi.mac_address,
+                },
+                timeout=5,
+            )
+
+            if response.status_code == 200:
+                json_response = response.json()
+                last_updated_at = json_response.get('config_last_updated_at')
+
+                self.logger.output('Config last updated at:', last_updated_at)
+
+                return last_updated_at
+            else:
+                self.logger.output('Failed to fetch config last updated timestamp:', response.status_code, response.content)
+
+                return None
+
+        except Exception as e:
+            self.logger.output(f'Error sending data: {e}')

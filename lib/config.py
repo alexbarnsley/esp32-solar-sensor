@@ -1,6 +1,10 @@
+import os
+
 class Config:
     debug: bool
     reset_seconds: int
+
+    last_updated: int
 
     api_url: str
     api_token: str
@@ -31,8 +35,10 @@ class Config:
     auto_update_config_url: str | None
     auto_update_config_token: str | None
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, last_updated: int = 0):
         self.debug = config.get('debug', False)
+
+        self.last_updated = last_updated
 
         self.reset_seconds = config.get('reset_seconds', 3600)
 
@@ -81,7 +87,9 @@ class Config:
         with open(file_path, 'r') as f:
             config_data = json.load(f)
 
+        last_updated = os.stat(file_path)[8]
+
         merged_config = default_config.copy()
         merged_config.update(config_data)
 
-        return Config(merged_config)
+        return Config(merged_config, last_updated)

@@ -33,6 +33,7 @@ class MonitorDevice:
         self.with_water_sensor = config.water_sensor_enabled
         self.with_bluetooth = config.bluetooth_enabled
         self.last_updated = {}
+        self.config_last_updated_check = utime.time()
 
         gc.enable()
 
@@ -94,6 +95,8 @@ class MonitorDevice:
                         machine.reset()
 
             gc.collect()
+
+            self.check_config_update()
 
             self.sleep()
 
@@ -171,3 +174,24 @@ class MonitorDevice:
             gc.collect()
 
             utime.sleep(1)
+
+    def check_config_update(self):
+        if self.config.auto_update_enabled is False:
+            return
+
+        now = utime.time()
+        if now - self.config_last_updated_check < 3600:
+            return
+
+        self.config_last_updated_check = now
+
+        last_updated = self.sensor.get_config_last_updated_at()
+        if last_updated is None:
+            return
+
+        if last_updated > self.config.last_updated:
+            self.logger.output('Configuration file has been updated remotely, restarting to load new configuration...')
+
+            machine.reset()
+
+        gc.collect()
