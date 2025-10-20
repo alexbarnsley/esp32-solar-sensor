@@ -3,13 +3,12 @@ import sys
 import utime
 import machine
 
-from lib.logger import Logger
+from lib.logger import logger
 from lib.config import Config
 from lib.bluetooth_device.bluetooth_state import BluetoothState, STATE_CONNECTED, STATE_DISCONNECTED, STATE_IDLE, STATE_SCANNING, STATE_READY
 from lib.sensor import Sensor
 from lib.utils import wait_for
 from lib.wifi import WifiHandler
-import lib.updater
 
 class MonitorDevice:
     bluetooth_devices: list[str] = []
@@ -27,13 +26,14 @@ class MonitorDevice:
     def __init__(self, config: Config):
         self.config = config
         self.debug = config.debug
-        self.logger = Logger(self.debug)
+        self.logger = logger
         self.reset_seconds = config.reset_seconds
         self.with_temperature_sensor = config.temperature_sensor_enabled
         self.with_water_sensor = config.water_sensor_enabled
         self.with_bluetooth = config.bluetooth_enabled
         self.last_updated = {}
-        self.config_last_updated_check = utime.time()
+
+        logger.set_debug(self.debug)
 
         gc.enable()
 
@@ -172,8 +172,15 @@ class MonitorDevice:
 
     def check_for_updates(self):
         if self.config.auto_update_enabled and self.config.update_github_repo:
+
+            now = utime.time()
+            if now - self.config.last_update_check < 3600 and now - self.config.last_update_config_check < 3600:
+                return
+
             try:
-                has_updated = lib.updater.install_update_if_available(self.config, self.wifi.mac_address)
+                from lib.sensor_updater import SensorUpdater
+
+                has_updated = SensorUpdater(self.config, self.logger).install_update_if_available(self.wifi.mac_address)
 
                 if has_updated:
                     self.logger.output('Update installed, restarting device...')
@@ -203,10 +210,8 @@ class MonitorDevice:
             return
 
         now = utime.time()
-        if now - self.config_last_updated_check < 3600:
+        if now - self.config.last_update_config_check < 3600:
             return
-
-        self.config_last_updated_check = now
 
         last_updated = self.sensor.get_config_last_updated_at()
         if last_updated is None:
@@ -216,5 +221,7 @@ class MonitorDevice:
             self.logger.output('Configuration file has been updated remotely, restarting to load new configuration...')
 
             machine.reset()
+
+        self.config.update_cache('last_updated_config_check', now)
 
         gc.collect()

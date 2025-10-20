@@ -2,6 +2,7 @@ import bluetooth
 import gc
 import machine
 import requests
+import sys
 import utime
 
 from lib.config import Config
@@ -132,7 +133,7 @@ class BluetoothState:
                 self.bt.gap_disconnect(self.conn_handle)
 
             except OSError as e:
-                if str(e) != '128': # Ignore "already disconnected" error
+                if str(e) != '-128': # Ignore "already disconnected" error
                     self.logger.output('OSError during disconnect:', str(e))
 
                     machine.reset()
@@ -311,17 +312,33 @@ class BluetoothState:
 
             gc.collect()
 
-        api_response = requests.post(
-            f'{self.api_url}/{self.api_endpoint}',
-            headers={
-                'Authorization': f'Bearer {self.api_token}',
-                'Content-Type': 'application/json',
-            },
-            json=post_data,
-            timeout=5,
-        )
+        try:
+            api_response = requests.post(
+                f'{self.api_url}/{self.api_endpoint}',
+                headers={
+                    'Authorization': f'Bearer {self.api_token}',
+                    'Content-Type': 'application/json',
+                },
+                json=post_data,
+                timeout=10,
+            )
 
-        self.logger.output('Data sent successfully:', api_response.status_code, api_response.content)
+            self.logger.output('Data sent successfully:', api_response.status_code, api_response.content)
+
+            api_response.close()
+
+        except OSError as e:
+            if str(e.args[0]) != '-116':
+                self.logger.output('OSError getting latest version:', e)
+                if self.debug:
+                    sys.print_exception(e)
+
+                machine.reset()
+
+        except Exception as e:
+            self.logger.output('Failed getting latest version:', e)
+            if self.debug:
+                sys.print_exception(e)
 
         return True
 

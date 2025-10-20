@@ -77,6 +77,13 @@ class WifiHandler:
 
             del access_points
 
+            if len(filtered_access_points) == 0:
+                self.logger.output('No known access points found, retrying...')
+
+                utime.sleep(1)
+
+                continue
+
             self.logger.output(f'Found {len(filtered_access_points)} access points')
 
             for ssid, rssi in filtered_access_points.items():
@@ -88,6 +95,8 @@ class WifiHandler:
 
                 try:
                     self.logger.output(f'Connecting to {ssid} [RSSI: {rssi}]...')
+
+                    self.wlan.disconnect()
 
                     utime.sleep(1)
 

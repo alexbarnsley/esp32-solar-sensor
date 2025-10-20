@@ -1,3 +1,4 @@
+import gc
 import machine
 from machine import Pin, I2C
 import requests
@@ -54,11 +55,10 @@ class Sensor:
     def get_temperature_sensor(self):
         try:
             if self.temperature_sensor is None:
-                i2c = I2C(
+                self.temperature_sensor = AHT10(I2C(
                     scl=Pin(self.temperature_sensor_scl_pin),
                     sda=Pin(self.temperature_sensor_sda_pin),
-                )
-                self.temperature_sensor = AHT10(i2c)
+                ))
 
             return self.temperature_sensor
 
@@ -88,46 +88,41 @@ class Sensor:
         self.logger.output('Updating sensor...')
 
         try:
-            data = {
-                "address": self.wifi.mac_address,
-                "temperature": None,
-                "humidity": None,
-                "is_wet": None,
-            }
-
-            if self.with_temperature_sensor:
-                data['temperature'] = self.temperature
-                data['humidity'] = self.humidity
-
-            if self.with_water_sensor:
-                data['is_wet'] = self.is_wet
-
             response = requests.post(
                 f'{self.api_url}/{self.api_endpoint}',
                 headers={
                     'Authorization': f'Bearer {self.api_token}',
                     'Content-Type': 'application/json',
                 },
-                json=data,
-                timeout=5,
+                json={
+                    "address": self.wifi.mac_address,
+                    "temperature": self.temperature if self.with_temperature_sensor else None,
+                    "humidity": self.humidity if self.with_temperature_sensor else None,
+                    "is_wet": self.is_wet if self.with_water_sensor else None,
+                },
+                timeout=10,
             )
-
-            response.close()
-
-            del data
-            del response
 
             self.logger.output('Data sent successfully:', response.status_code, response.content)
 
-        except OSError as e:
-            self.logger.output(f'OSError sending data: {e}')
-            if self.debug:
-                sys.print_exception(e)
+            response.close()
 
-            machine.reset()
+            del response
+
+            gc.collect()
+
+        except OSError as e:
+            if str(e.args[0]) != '-116':
+                self.logger.output(f'OSError sending sensor data: {e}')
+                if self.debug:
+                    sys.print_exception(e)
+
+                machine.reset()
 
         except Exception as e:
-            self.logger.output(f'Error sending data: {e}')
+            self.logger.output(f'Error sending sensor data: {e}')
+            if self.debug:
+                sys.print_exception(e)
 
     def get_config_last_updated_at(self) -> int | None:
         self.logger.output('Fetching config last updated timestamp...')
@@ -142,7 +137,7 @@ class Sensor:
                 json={
                     "address": self.wifi.mac_address,
                 },
-                timeout=5,
+                timeout=10,
             )
 
             last_updated_at = None
@@ -164,13 +159,16 @@ class Sensor:
             return last_updated_at
 
         except OSError as e:
-            self.logger.output(f'OSError sending data: {e}')
-            if self.debug:
-                sys.print_exception(e)
+            if str(e.args[0]) != '-116':
+                self.logger.output(f'OSError determining whether config needs updating: {e}')
+                if self.debug:
+                    sys.print_exception(e)
 
-            machine.reset()
+                machine.reset()
 
         except Exception as e:
-            self.logger.output(f'Error sending data: {e}')
+            self.logger.output(f'Error determining whether config needs updating: {e}')
+            if self.debug:
+                sys.print_exception(e)
 
         return None

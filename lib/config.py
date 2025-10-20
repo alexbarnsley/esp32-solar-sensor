@@ -1,9 +1,3 @@
-import gc
-import ujson as json
-import machine
-import os
-from lib.utils import copy_file, json_dumps_with_indent
-
 class Config:
     debug: bool
     reset_seconds: int
@@ -40,6 +34,8 @@ class Config:
     auto_update_config_token: str | None
 
     def __init__(self, config: dict):
+        import gc
+
         self.debug = config.get('debug', False)
 
         self.load_cache(config)
@@ -97,9 +93,12 @@ class Config:
         self.last_updated = config.get('cache', {}).get('config_last_updated_at', 0)
         self.version = config.get('cache', {}).get('version', '0.0.0')
         self.last_update_check = config.get('cache', {}).get('last_update_check', 0)
+        self.last_update_config_check = config.get('cache', {}).get('last_updated_config_check', 0)
 
     @staticmethod
     def from_json_file(file_path: str) -> 'Config':
+        import ujson as json
+
         with open('config.default.json', 'r') as f:
             default_config = json.load(f)
 
@@ -121,6 +120,9 @@ class Config:
 
     @staticmethod
     def get_cache(key: str | None = None):
+        import machine
+        import ujson as json
+
         try:
             with open('cache.json', 'r') as f:
                 cache_data = json.load(f)
@@ -132,14 +134,20 @@ class Config:
             return cache_data
 
         except OSError as e:
-            print(f'OSError reading cache file: {e}')
+            if e.args[0] != 2:
+                print(f'OSError reading cache file: {e}')
 
-            machine.reset()
+                machine.reset()
 
         except Exception:
-            return None if key is not None else {}
+            pass
+
+        return None if key is not None else {}
 
     def update_cache(self, key: str, value):
+        import os
+        from lib.utils import copy_file, json_dumps_with_indent
+
         cache_data = Config.get_cache()
 
         cache_data[key] = value
