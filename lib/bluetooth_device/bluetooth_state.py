@@ -115,7 +115,7 @@ class BluetoothState:
         self.bt.gap_connect(0, bytes(int(b, 16) for b in address.split(':')))
 
     def on_connected(self, data: tuple | None = None):
-        self.logger.output('Connected!', data, self.__dict__)
+        self.logger.output('Connected to device.')
         self.conn_handle = data[0]
 
         self.get_services()
@@ -308,6 +308,8 @@ class BluetoothState:
             post_data['cell_voltages'] = self.data_parser.cell_voltages[address]
 
             del self.data_parser.cell_voltages[address]
+
+            gc.collect()
 
         api_response = requests.post(
             f'{self.api_url}/{self.api_endpoint}',

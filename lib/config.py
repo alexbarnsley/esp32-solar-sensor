@@ -1,5 +1,5 @@
 import gc
-import json
+import ujson as json
 import machine
 import os
 from lib.utils import copy_file, json_dumps_with_indent

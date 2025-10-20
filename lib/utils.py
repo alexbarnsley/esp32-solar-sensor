@@ -1,4 +1,5 @@
-import json
+import gc
+import ujson as json
 import utime
 
 def wait_for(condition_func, *, timeout=10, check_interval=0.1, on_timeout=None) -> bool:
@@ -17,7 +18,7 @@ def wait_for(condition_func, *, timeout=10, check_interval=0.1, on_timeout=None)
 def copy_file(from_path, to_path):
     with open(from_path) as from_file:
         with open(to_path, 'w') as to_file:
-            CHUNK_SIZE = 512 # bytes
+            CHUNK_SIZE = 128 # bytes
             data = from_file.read(CHUNK_SIZE)
             while data:
                 to_file.write(data)
@@ -25,7 +26,13 @@ def copy_file(from_path, to_path):
 
             to_file.close()
 
+        del to_file
+
         from_file.close()
+
+    del from_file
+
+    gc.collect()
 
 def json_dumps_with_indent(data, indent=4, nested_index=1) -> str:
     if not isinstance(data, dict) and not isinstance(data, list):

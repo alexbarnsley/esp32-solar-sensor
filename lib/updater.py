@@ -339,6 +339,11 @@ def _download_all_files(version, github_src_dir, sub_dir='', github_repo='alexba
 
     file_list.close()
 
+    del file_list
+    del file_list_json
+
+    gc.collect()
+
 def _download_file(version, git_path, github_repo='alexbarnsley/esp32-solar-sensor', api_token: str | None = None, new_version_dir='next'):
     response = requests.get(
         f'https://raw.githubusercontent.com/{github_repo}/{version}/{git_path}',

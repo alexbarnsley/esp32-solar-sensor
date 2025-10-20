@@ -112,6 +112,11 @@ class Sensor:
                 timeout=5,
             )
 
+            response.close()
+
+            del data
+            del response
+
             self.logger.output('Data sent successfully:', response.status_code, response.content)
 
         except OSError as e:
@@ -140,17 +145,23 @@ class Sensor:
                 timeout=5,
             )
 
+            last_updated_at = None
             if response.status_code == 200:
                 json_response = response.json()
                 last_updated_at = json_response.get('config_updated_at')
 
+                del json_response
+
                 self.logger.output('Config last updated at:', last_updated_at)
 
-                return last_updated_at
             else:
-                self.logger.output('Failed to fetch config last updated timestamp:', response.status_code, response.content)
+                self.logger.output('Failed to fetch config last updated timestamp')
 
-                return None
+            response.close()
+
+            del response
+
+            return last_updated_at
 
         except OSError as e:
             self.logger.output(f'OSError sending data: {e}')
@@ -161,3 +172,5 @@ class Sensor:
 
         except Exception as e:
             self.logger.output(f'Error sending data: {e}')
+
+        return None

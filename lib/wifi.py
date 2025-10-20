@@ -70,14 +70,16 @@ class WifiHandler:
         while not self.wlan.isconnected():
             access_points = self.wlan.scan()
             access_points.sort(key=lambda x: x[3], reverse=True)
-            access_points = {
+            filtered_access_points = {
                 access_point[0]: access_point[3]
                 for access_point in access_points if access_point[0].decode('utf-8') in self.networks
             }
 
-            self.logger.output(f'Found {len(access_points)} access points')
+            del access_points
 
-            for ssid, rssi in access_points.items():
+            self.logger.output(f'Found {len(filtered_access_points)} access points')
+
+            for ssid, rssi in filtered_access_points.items():
                 ssid = ssid.decode('utf-8')
                 if self.networks.get(ssid) is None:
                     self.logger.output(f'No password for {ssid}, skipping.')
@@ -86,8 +88,6 @@ class WifiHandler:
 
                 try:
                     self.logger.output(f'Connecting to {ssid} [RSSI: {rssi}]...')
-
-                    self.wlan.disconnect()
 
                     utime.sleep(1)
 
@@ -110,5 +110,7 @@ class WifiHandler:
 
                 except Exception as e:
                     self.logger.output(f'Error connecting to {ssid}: {e}')
+
+            del filtered_access_points
 
         self.logger.output('network config:', self.wlan.ipconfig('addr4'))
