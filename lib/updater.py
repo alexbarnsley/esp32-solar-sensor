@@ -273,11 +273,14 @@ def get_latest_version(config, github_repo='alexbarnsley/esp32-solar-sensor', ap
         machine.reset()
 
     except KeyError as e:
-        raise ValueError(
+        logger.output(
             "Release not found: \n",
             "Please ensure release as marked as 'latest', rather than pre-release \n",
             f"github api message: \n {gh_json} \n "
-        ) from e
+        )
+
+        if config.debug:
+            sys.print_exception(e)
 
     latest_release.close()
 
