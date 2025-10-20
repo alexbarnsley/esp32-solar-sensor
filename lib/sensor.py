@@ -20,6 +20,7 @@ class Sensor:
         self.api_url = config.api_url
         self.api_endpoint = config.sensor_endpoint
         self.config_api_endpoint = config.sensor_config_endpoint
+        self.config_last_updated_api_endpoint = config.sensor_config_last_updated_endpoint
         self.api_token = config.api_token
         self.water_sensor = None
         self.temperature_sensor = None
@@ -128,7 +129,7 @@ class Sensor:
 
         try:
             response = requests.get(
-                f'{self.api_url}/{self.config_api_endpoint}',
+                f'{self.api_url}/{self.config_last_updated_api_endpoint}',
                 headers={
                     'Authorization': f'Bearer {self.api_token}',
                     'Content-Type': 'application/json',
@@ -141,7 +142,7 @@ class Sensor:
 
             if response.status_code == 200:
                 json_response = response.json()
-                last_updated_at = json_response.get('config_last_updated_at')
+                last_updated_at = json_response.get('config_updated_at')
 
                 self.logger.output('Config last updated at:', last_updated_at)
 

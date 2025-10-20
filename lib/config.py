@@ -51,6 +51,7 @@ class Config:
         self.battery_endpoint = config.get('api', {}).get('battery_endpoint', 'solar/battery/details')
         self.sensor_endpoint = config.get('api', {}).get('sensor_endpoint', 'solar/sensor/details')
         self.sensor_config_endpoint = config.get('api', {}).get('sensor_config_endpoint', 'solar/sensor/config')
+        self.sensor_config_last_updated_endpoint = config.get('api', {}).get('sensor_config_last_updated_endpoint', 'solar/sensor/config/last-updated')
 
         self.wifi_networks = config.get('wifi', {})
 
@@ -74,6 +75,7 @@ class Config:
         self.auto_update_config_enabled = config.get('auto_update', {}).get('config', {}).get('enabled', self.auto_update_enabled)
         self.auto_update_config_token = config.get('auto_update', {}).get('config', {}).get('api_token')
         self.auto_update_config_url = config.get('auto_update', {}).get('config', {}).get('url')
+        self.auto_update_config_check_url = config.get('auto_update', {}).get('config', {}).get('last_updated_url')
 
         if self.auto_update_config_url is None or len(self.auto_update_config_url) == 0:
             self.auto_update_config_url = self.api_url + '/' + self.sensor_config_endpoint
@@ -81,11 +83,20 @@ class Config:
             if self.auto_update_config_token is None:
                 self.auto_update_config_token = self.api_token
 
+        if self.auto_update_config_check_url is None or len(self.auto_update_config_check_url) == 0:
+            self.auto_update_config_check_url = self.api_url + '/' + self.sensor_config_last_updated_endpoint
+
+            if self.auto_update_config_token is None:
+                self.auto_update_config_token = self.api_token
+
+        del config
+
         gc.collect()
 
     def load_cache(self, config: dict):
         self.last_updated = config.get('cache', {}).get('config_last_updated_at', 0)
         self.version = config.get('cache', {}).get('version', '0.0.0')
+        self.last_update_check = config.get('cache', {}).get('last_update_check', 0)
 
     @staticmethod
     def from_json_file(file_path: str) -> 'Config':

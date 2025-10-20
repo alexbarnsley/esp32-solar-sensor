@@ -39,23 +39,37 @@ def install_update_if_available(config: Config, mac_address: str) -> bool:
 
         machine.reset()
 
+    last_update_check = config.last_update_check
+    if utime.time() - last_update_check < 3600:
+        logger.output('Update check performed recently, skipping...')
+
+        return False
+
     github_repo = github_repo.rstrip('/').replace('https://github.com/', '')
     github_src_dir = '/' if github_src_dir is None or len(github_src_dir) < 1 else github_src_dir.rstrip('/') + '/'
 
-    (current_version, latest_version) = _check_for_new_version(config, github_repo)
-    if latest_version > current_version:
-        logger.output(f'New version found - {latest_version}...')
+    version_check_response = _check_for_new_version(config, github_repo)
+    if version_check_response is not None:
+        (current_version, latest_version) = version_check_response
+        if latest_version > current_version:
+            logger.output(f'New version found - {latest_version}...')
 
-        _rmtree(modulepath(new_version_dir))
+            _rmtree(modulepath(new_version_dir))
 
-        mkdir(modulepath(new_version_dir))
+            mkdir(modulepath(new_version_dir))
 
-        _download_new_version(latest_version, github_src_dir, new_version_dir, github_repo, api_token)
-        _install_new_version(config, new_version_dir, latest_version)
+            _download_new_version(latest_version, github_src_dir, new_version_dir, github_repo, api_token)
+            _install_new_version(config, new_version_dir, latest_version)
 
-        gc.collect()
+            gc.collect()
 
-        return True
+            return True
+
+        logger.output('No new version found.')
+    else:
+        logger.output('Could not determine if new version is available. Pausing checks to avoid repeated failed attempts.')
+
+    config.update_cache('last_update_check', utime.time())
 
     gc.collect()
 
@@ -73,7 +87,12 @@ def _headers(api_token: str | None = None) -> dict[str, str]:
 
 def _check_for_new_version(config, github_repo='alexbarnsley/esp32-solar-sensor', api_token: str | None = None):
     current_version = config.version
-    latest_version = get_latest_version(github_repo, api_token)
+    latest_version = get_latest_version(config, github_repo, api_token)
+
+    if latest_version is None:
+        logger.output('Could not get latest version, skipping update check.')
+
+        return None
 
     logger.output('Checking version... ')
     logger.output('\tCurrent version: ', current_version)
@@ -81,12 +100,80 @@ def _check_for_new_version(config, github_repo='alexbarnsley/esp32-solar-sensor'
 
     return (current_version, latest_version)
 
-def _download_config_file(config: Config, mac_address: str) -> bool:
+def _check_for_new_config(config: Config, mac_address: str) -> bool:
     if config.auto_update_enabled is False:
         return
 
     if config.auto_update_config_enabled is False:
         return
+
+    config_check_url = config.auto_update_config_check_url
+    if config_check_url is None:
+        logger.output('No config URL provided, skipping config update.')
+
+        return
+
+    has_update = False
+    try:
+        logger.output('Current config last modified at:', config.last_updated)
+
+        headers = {}
+        if config.auto_update_config_token is not None:
+            headers['Authorization'] = f'Bearer {config.auto_update_config_token}'
+
+        response = requests.get(
+            config_check_url,
+            timeout=10,
+            stream=True,
+            headers=headers,
+            json={
+                "address": mac_address,
+            }
+        )
+
+        response_json = response.json()
+        logger.output('Config file response:', response_json)
+
+        if 'error' in response_json:
+            logger.output('Error fetching config file:', response_json['error'])
+
+        elif response.status_code != 200:
+            logger.output('Failed to fetch config file, status code:', response.status_code)
+
+        elif 'config_updated_at' not in response_json:
+            logger.output('No config found in response, skipping config update.')
+
+        elif 'config_updated_at' in response_json and response_json['config_updated_at'] <= config.last_updated:
+            logger.output(f'Config file is up to date, no update needed | config_updated_at: {response_json["config_updated_at"]} | last_updated: {config.last_updated}')
+
+        else:
+            has_update = True
+
+        response.close()
+
+        del headers
+        del response
+        del response_json
+
+    except OSError as e:
+        logger.output('OSError updating config file:', e)
+        if config.debug:
+            sys.print_exception(e)
+
+        machine.reset()
+
+    except Exception as e:
+        logger.output('Failed to update config file:', e)
+        if config.debug:
+            sys.print_exception(e)
+
+    gc.collect()
+
+    return has_update
+
+def _download_config_file(config: Config, mac_address: str) -> bool:
+    if not _check_for_new_config(config, mac_address):
+        return False
 
     config_url = config.auto_update_config_url
     if config_url is None:
@@ -126,9 +213,6 @@ def _download_config_file(config: Config, mac_address: str) -> bool:
         elif 'config' not in response_json:
             logger.output('No config found in response, skipping config update.')
 
-        elif 'config_updated_at' in response_json and response_json['config_updated_at'] <= config.last_updated:
-            logger.output(f'Config file is up to date, no update needed | config_updated_at: {response_json["config_updated_at"]} | last_updated: {config.last_updated}')
-
         else:
             with open('config.updated.json', 'wb') as configfile:
                 configfile.write(json_dumps_with_indent(response_json['config']).encode('utf-8'))
@@ -167,7 +251,7 @@ def _download_config_file(config: Config, mac_address: str) -> bool:
 
     return has_updated
 
-def get_latest_version(github_repo='alexbarnsley/esp32-solar-sensor', api_token: str | None = None):
+def get_latest_version(config, github_repo='alexbarnsley/esp32-solar-sensor', api_token: str | None = None):
     logger.output('Getting latest version from GitHub...')
 
     latest_release = requests.get(
@@ -179,6 +263,7 @@ def get_latest_version(github_repo='alexbarnsley/esp32-solar-sensor', api_token:
 
     gh_json = latest_release.json()
 
+    version = None
     try:
         version = gh_json[0]['name']
 

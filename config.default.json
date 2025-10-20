@@ -16,7 +16,8 @@
         "token": "api-token",
         "battery_endpoint": "solar/battery/details",
         "sensor_endpoint": "solar/sensor/details",
-        "sensor_config_endpoint": "solar/sensor/config"
+        "sensor_config_endpoint": "solar/sensor/config",
+        "sensor_config_last_updated_endpoint": "solar/sensor/config/last-updated"
     },
     "reset_seconds": 3600,
     "temperature_sensor": {
@@ -39,6 +40,7 @@
         "config": {
             "enabled": false,
             "url": "https://custom-api-endpoint.com/config.json",
+            "last_updated_url": "https://custom-api-endpoint.com/config/last-updated",
             "api_token": null
         }
     }
