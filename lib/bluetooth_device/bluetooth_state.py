@@ -1,4 +1,5 @@
 import bluetooth
+import gc
 import machine
 import requests
 import utime
@@ -59,9 +60,19 @@ class BluetoothState:
 
         self.logger.output('Initializing Bluetooth...')
 
+        utime.sleep_ms(100)
+
+        gc.collect()
+
+        utime.sleep_ms(100)
+
+        self.logger.output('Initializing Bluetooth instance...')
+
         self.bt = bluetooth.BLE()
 
         utime.sleep_ms(100)
+
+        self.logger.output('Initializing Bluetooth IRQ...')
 
         self.bt.irq(self.bt_irq)
 
@@ -136,6 +147,8 @@ class BluetoothState:
         utime.sleep_ms(1000)
 
         self.set_state(STATE_DISCONNECTED)
+
+        gc.collect()
 
     def get_services(self):
         if self.current_device:
