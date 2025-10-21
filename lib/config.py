@@ -38,7 +38,7 @@ class Config:
 
         self.debug = config.get('debug', False)
 
-        self.load_cache(config)
+        self.load_cache(config.get('cache', {}))
 
         self.reset_seconds = config.get('reset_seconds', 3600)
 
@@ -90,10 +90,10 @@ class Config:
         gc.collect()
 
     def load_cache(self, config: dict):
-        self.last_updated = config.get('cache', {}).get('config_last_updated_at', 0)
-        self.version = config.get('cache', {}).get('version', '0.0.0')
-        self.last_update_check = config.get('cache', {}).get('last_update_check', 0)
-        self.last_update_config_check = config.get('cache', {}).get('last_updated_config_check', 0)
+        self.last_updated = config.get('config_last_updated_at', 0)
+        self.version = config.get('version', '0.0.0')
+        self.last_update_check = config.get('last_update_check', 0)
+        self.last_update_config_check = config.get('last_updated_config_check', 0)
 
     @staticmethod
     def from_json_file(file_path: str) -> 'Config':
