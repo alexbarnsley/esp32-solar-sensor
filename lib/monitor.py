@@ -211,10 +211,14 @@ class MonitorDevice:
 
         now = utime.time()
         if now - self.config.last_update_config_check < 3600:
+            self.logger.output('Skipping config update check, last checked less than an hour ago.')
+
             return
 
         last_updated = self.sensor.get_config_last_updated_at()
         if last_updated is None:
+            self.logger.output('No config last updated timestamp retrieved, skipping config update check.')
+
             return
 
         if last_updated > self.config.last_updated:
